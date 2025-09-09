@@ -4,7 +4,7 @@ import mongoose from "mongoose";
 import dotenv from "dotenv";
 import cors from "cors";
 
-// Import routes
+// Import routes from their original locations 
 import landingRouters from "./routers/landingRouter.js";
 import loginRouter from "./routers/loginRouter.js";
 import registerRouter from "./routers/registerRouter.js";
@@ -20,7 +20,7 @@ const app = express();
 app.use(express.json());
 app.use(cors({ origin: "http://localhost:1573", credentials: true }));
 
-// Routes
+// Routes hello world
 app.use("/api/", landingRouters);
 app.use("/api/login", loginRouter);
 app.use("/api/register", registerRouter);
