@@ -1,0 +1,36 @@
+Root width control
+#root {
+  width: 100%;
+  max-width: 1200px;   /* keeps content centered on large screens */
+  margin: 0 auto;      /* centers horizontally */
+  padding: 0 20px;     /* adds breathing room on smaller screens */
+  box-sizing: border-box;
+}
+
+/* Adjust at breakpoints */
+@media (max-width: 1200px) {
+  #root {
+    max-width: 1000px;
+  }
+}
+
+@media (max-width: 992px) {
+  #root {
+    max-width: 90%;
+    padding: 0 15px;
+  }
+}
+
+@media (max-width: 768px) {
+  #root {
+    max-width: 95%;
+    padding: 0 15px;
+  }
+}
+
+@media (max-width: 480px) {
+  #root {
+    max-width: 100%;
+    padding: 0 10px;
+  }
+}
