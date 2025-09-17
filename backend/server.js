@@ -10,7 +10,8 @@ import loginRouter from "./routers/loginRouter.js";
 import registerRouter from "./routers/registerRouter.js";
 import adminRoutes from "./routers/adminRoutes.js";
 import notificationRoutes from "./routers/NotificationRoute.js";
-import studentRouter from "./routers/studentRoutes.js"
+import studentRouter from "./routers/studentRoutes.js";
+import facultyRoutes from "./routers/facultyRoutes.js";
 
 dotenv.config();
 
@@ -25,10 +26,12 @@ app.use("/api/", landingRouters);
 app.use("/api/login", loginRouter);
 app.use("/api/register", registerRouter);
 app.use("/api/admin", adminRoutes);
+app.use("/api/student",studentRouter);
+app.use("/api/faculty",facultyRoutes);
 app.use("/api/notifications", notificationRoutes);
-app.use("/api/student",studentRouter)
 
-// Default route for testing
+
+// Default route for testing 
 app.get("/", (req, res) => {
   res.send("Server is running ✅");
 });
