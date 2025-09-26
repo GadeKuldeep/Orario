@@ -34,30 +34,27 @@ const TimetableGenerator = () => {
     try {
       const token = localStorage.getItem("token");
 
-      // Prepare payload exactly as backend expects
       const payload = {
         academicYear: formData.academicYear.trim(),
         semester: Number(formData.semester),
         department: formData.department.trim(),
-        days: formData.days,                 // optional
-        slotsPerDay: Number(formData.slotsPerDay), // optional
-        options: Number(formData.options),   // optional
-        debug: Boolean(formData.debug),      // optional
+        days: formData.days,
+        slotsPerDay: Number(formData.slotsPerDay),
+        options: Number(formData.options),
+        debug: Boolean(formData.debug),
       };
 
-      // Basic frontend validation
       if (!payload.academicYear || !payload.semester || !payload.department) {
         setError("Academic Year, Semester, and Department are required.");
         setLoading(false);
         return;
       }
 
-      // Set headers only if token exists
       const headers = { "Content-Type": "application/json" };
       if (token) headers.Authorization = `Bearer ${token}`;
 
       const res = await axios.post(
-        "http://localhost:1573/api/admin/timetable/generate",
+        "https://orario-3.onrender.com/api/admin/timetable/generate", // Render backend
         payload,
         { headers }
       );

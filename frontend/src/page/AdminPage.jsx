@@ -9,7 +9,7 @@ const AdminPage = () => {
   const [reports, setReports] = useState([]);
   const navigate = useNavigate();
 
-  const BASE_URL = "http://localhost:1573";
+  const BASE_URL = "https://orario-3.onrender.com";
   const token = localStorage.getItem("token");
 
   const authFetch = async (url, options = {}) => {

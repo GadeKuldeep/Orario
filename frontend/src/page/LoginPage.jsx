@@ -9,6 +9,8 @@ const LoginPage = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const API_BASE = "https://orario-3.onrender.com/api"; // Render backend
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -20,7 +22,7 @@ const LoginPage = () => {
 
     setLoading(true);
     try {
-      const response = await fetch("http://localhost:3000/api/login", {
+      const response = await fetch(`${API_BASE}/login`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
@@ -35,7 +37,8 @@ const LoginPage = () => {
         setError(data.msg || "Login failed");
       }
     } catch (err) {
-      setError("Server error. Please try again.",err);
+      setError("Server error. Please try again.");
+      console.error(err);
     } finally {
       setLoading(false);
     }

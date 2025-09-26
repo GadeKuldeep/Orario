@@ -7,7 +7,8 @@ const FacultyDashboard = () => {
   const [availability, setAvailability] = useState({ available_slots: "", preferences: "" });
 
   const facultyId = "replace_with_logged_in_faculty_id"; 
-  const API_BASE = "http://localhost:1573/api/faculty"; // adjust as needed
+  // Dynamic API base: works with Vite proxy locally and deployed backend
+  const API_BASE = import.meta.env.VITE_API_BASE || "/api/faculty";
 
   useEffect(() => {
     fetch(`${API_BASE}/admin/${facultyId}`)

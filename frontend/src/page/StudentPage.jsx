@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 
-const API_URL = "http://localhost:5000/api/student"; // adjust if needed
+const API_URL = "https://orario-3.onrender.com/api/student"; // Render backend
 
 const StudentDashboard = () => {
   const [dashboard, setDashboard] = useState(null);
@@ -34,7 +34,7 @@ const StudentDashboard = () => {
         console.error("❌ Error fetching student data:", err.response?.data || err);
       } finally {
         setLoading(false);
-      }f
+      }
     };
 
     fetchData();

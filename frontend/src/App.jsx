@@ -6,6 +6,7 @@ import AdminPage from "./page/AdminPage.jsx";
 import StudentDashboard from "./page/StudentPage.jsx";
 import FacultyDashboard from "./page/FacultyDashboard.jsx";
 import TimetableGenerator from "./page/TimetableGenerator.jsx";
+import RegistrationPage from "./page/RegistrationPage.jsx";
 
 
 const App = () => {
@@ -14,6 +15,7 @@ const App = () => {
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegistrationPage />} />
         <Route path="/admin/dashboard" element={<AdminPage />} />
         <Route path="/student/dashboard" element={<StudentDashboard />} />
         <Route path="/faculty/dashboard" element={<FacultyDashboard />}/>

@@ -8,7 +8,7 @@ export default defineConfig({
     port: 1573, // your frontend dev port
     proxy: {
       "/api": {
-        target: "http://localhost:3000", // backend server
+        target: "https://orario-3.onrender.com", // backend server
         changeOrigin: true,
       },
     },

@@ -11,7 +11,7 @@ const LandingPage = () => {
 
   const scrollToSection = (ref) => {
     ref.current.scrollIntoView({ behavior: "smooth" });
-  };     
+  };
 
   const goToLogin = () => {
     window.location.href = "/login"; // redirect
@@ -21,7 +21,7 @@ const LandingPage = () => {
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrentImage((prev) => (prev + 1) % 3); // loop over 3 images
-    }, 6000); // every 3 seconds
+    }, 6000); // every 6 seconds
     return () => clearInterval(interval);
   }, []);
 
@@ -78,7 +78,7 @@ const LandingPage = () => {
           <div className="product-card">Product 1</div>
           <div className="product-card">Product 2</div>
           <div className="product-card">Product 3</div>
-        </div>2
+        </div>
       </section>
 
       <section ref={contactRef} className="section contact">
