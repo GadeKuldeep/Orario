@@ -16,6 +16,9 @@ const RegistrationPage = () => {
   const [loading, setLoading] = useState(false);
   const [successMsg, setSuccessMsg] = useState("");
 
+  // Use environment variable or fallback to production URL
+  const BASE_URL = import.meta.env.VITE_API_URL || "https://orario-3.onrender.com";
+
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -34,8 +37,8 @@ const RegistrationPage = () => {
 
     setLoading(true);
     try {
-      // Use relative path for proxy
-      const res = await fetch("/api/register", {
+      // Use the full backend URL for production
+      const res = await fetch(`${BASE_URL}/api/register`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
@@ -44,14 +47,15 @@ const RegistrationPage = () => {
       const data = await res.json();
 
       if (res.ok) {
-        setSuccessMsg(data.msg);
+        setSuccessMsg(data.msg || "Registration successful!");
         setFormData({ name: "", email: "", password: "", role: "student", department: "" });
         setTimeout(() => navigate("/login"), 2000); // redirect after 2 sec
       } else {
-        setError(data.msg || "Registration failed");
+        setError(data.msg || `Registration failed: ${res.status}`);
       }
     } catch (err) {
-      setError("Server error. Please try again.",err);
+      setError("Network error. Please check your connection and try again.");
+      console.error("Registration error:", err);
     } finally {
       setLoading(false);
     }
@@ -60,8 +64,8 @@ const RegistrationPage = () => {
   return (
     <div className="registration-container">
       <h1>Register</h1>
-      {error && <p style={{ color: "red" }}>{error}</p>}
-      {successMsg && <p style={{ color: "green" }}>{successMsg}</p>}
+      {error && <p className="error-message">{error}</p>}
+      {successMsg && <p className="success-message">{successMsg}</p>}
 
       <form onSubmit={handleSubmit}>
         <div>
@@ -94,6 +98,7 @@ const RegistrationPage = () => {
             value={formData.password}
             onChange={handleChange}
             required
+            minLength="6"
           />
         </div>
 
@@ -113,6 +118,7 @@ const RegistrationPage = () => {
             name="department"
             value={formData.department}
             onChange={handleChange}
+            placeholder="Optional"
           />
         </div>
 
