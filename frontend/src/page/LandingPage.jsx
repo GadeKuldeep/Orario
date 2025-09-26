@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom"; // ✅ Add this import
 import "./LandingPage.css";
 
 const LandingPage = () => {
@@ -6,6 +7,7 @@ const LandingPage = () => {
   const aboutRef = useRef(null);
   const productsRef = useRef(null);
   const contactRef = useRef(null);
+  const navigate = useNavigate(); // ✅ Add this hook
 
   const [currentImage, setCurrentImage] = useState(0);
 
@@ -14,7 +16,7 @@ const LandingPage = () => {
   };
 
   const goToLogin = () => {
-    window.location.href = "/login"; // redirect
+    navigate("/login"); // ✅ Use navigate instead of window.location.href
   };
 
   // 🔄 Background image carousel effect
@@ -27,7 +29,7 @@ const LandingPage = () => {
 
   const bgImages = [
     "https://plus.unsplash.com/premium_photo-1691588961759-e61c6e241082?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8Y29sbGFnZSUyMHN0dWRlbnRzfGVufDB8fDB8fHww",
-    "https://images.unsplash.com/photo-1654366698665-e6d611a9aaa9?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8Y29sbGFnZSUyMHN0dWRlbnRzfGVufDB8fDB8fHww",
+    "https://images.unsplash.com/photo-1654366698665-e61c6e611a9aaa9?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8Y29sbGFnZSUyMHN0dWRlbnRzfGVufDB8fDB8fHww",
     "https://images.unsplash.com/photo-1741636174546-0d8c52a5aa00?w=600&auto=format&fit=crop&q=60&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MTd8fGNvbGxhZ2UlMjBzdHVkZW50c3xlbnwwfHwwfHx8MA%3D%3D"
   ];
 
