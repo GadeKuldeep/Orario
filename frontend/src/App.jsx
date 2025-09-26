@@ -27,7 +27,7 @@
 
 // export default App;
 import React from "react";
-import { HashRouter as Router, Routes, Route } from "react-router-dom";
+import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
 import LandingPage from "./page/LandingPage.jsx"; 
 import LoginPage from "./page/LoginPage.jsx";
 import AdminPage from "./page/AdminPage.jsx";
@@ -47,6 +47,8 @@ const App = () => {
         <Route path="/student/dashboard" element={<StudentDashboard />} />
         <Route path="/faculty/dashboard" element={<FacultyDashboard />}/>
         <Route path="/timetable/generate" element={<TimetableGenerator />}/>
+        {/* Add catch-all route */}
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
   );
