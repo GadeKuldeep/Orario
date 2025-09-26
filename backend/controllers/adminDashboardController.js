@@ -4,15 +4,6 @@ import Classroom from "../models/Classroom.js";
 import Timetable from "../models/Timetable.js";
 import jwt from "jsonwebtoken";
 
-// 🛠️ Dummy scheduling algorithm placeholder
-// Replace with your real scheduling logic later
-const generateOptimizedTimetable = async () => {
-  return [
-    { id: 1, room: "CSE-101", subject: "Operating Systems", faculty: "Dr. Priya Sharma", time: "10:00-11:00" },
-    { id: 2, room: "CSE-102", subject: "DBMS", faculty: "Dr. Rahul Mehta", time: "11:00-12:00" },
-  ];
-};
-
 // Middleware helpers
 export const verifyToken = (req, res, next) => {
   const token = req.headers["authorization"]?.split(" ")[1];
@@ -99,15 +90,6 @@ export const addClassroom = async (req, res) => {
   }
 };
 
-// Generate timetable
-export const generateTimetable = async (req, res) => {
-  try {
-    const timetableOptions = await generateOptimizedTimetable();
-    res.status(200).json({ msg: "Generated timetables", options: timetableOptions });
-  } catch (err) {
-    res.status(500).json({ msg: "Failed to generate timetable", error: err.message });
-  }
-};
 
 // Approve or reject timetable
 export const approveTimetable = async (req, res) => {

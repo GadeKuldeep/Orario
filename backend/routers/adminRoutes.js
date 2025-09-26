@@ -4,12 +4,13 @@ import {
   getDashboardOverview,
   addFaculty,
   addClassroom,
-  generateTimetable,
   approveTimetable,
   getReports,
 } from "../controllers/adminDashboardController.js";
 
 import { verifyToken, isAdmin } from "../middleware/authMiddleware.js";
+import { generateTimetable } from "../controllers/generateTimeTableController.js";
+
 
 const router = express.Router();
 
@@ -27,7 +28,7 @@ router.post("/faculty/add", verifyToken, isAdmin, addFaculty);
 router.post("/classroom/add", verifyToken, isAdmin, addClassroom);
 
 // Timetable Management
-router.post("/timetable/generate", verifyToken, isAdmin, generateTimetable);
+router.post("/timetable/generate", verifyToken, isAdmin,generateTimetable );
 router.put("/timetable/approve", verifyToken, isAdmin, approveTimetable);
 
 // Reports

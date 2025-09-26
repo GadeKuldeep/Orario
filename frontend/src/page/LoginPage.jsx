@@ -35,7 +35,7 @@ const LoginPage = () => {
         setError(data.msg || "Login failed");
       }
     } catch (err) {
-      setError("Server error. Please try again.");
+      setError("Server error. Please try again.",err);
     } finally {
       setLoading(false);
     }
