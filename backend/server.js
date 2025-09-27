@@ -25,7 +25,7 @@ const app = express();
 
 // Middleware
 app.use(express.json());
-app.use(cors({ origin: "http://localhost:1573", credentials: true }));
+app.use(cors({ origin: "https://orario-4.netlify.app", credentials: true }));
 
 // API Routes
 app.use("/api/", landingRouters);
