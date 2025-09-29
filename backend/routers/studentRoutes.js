@@ -6,40 +6,45 @@ import {
   getStudentNotifications,
   markNotificationsRead,
   searchTimetable,
+  getStudentProfile,
+  updateStudentProfile,
+  getAttendanceSummary,
+  getCourseMaterials
 } from "../controllers/studentDashboardController.js";
-import { verifyToken } from "../middleware/authMiddleware.js";
+
+import { 
+  verifyToken, 
+  isStudent,
+  isAdminOrSelf,
+  optionalAuth,
+  rateLimitByUser 
+} from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Middleware: allow only students
-const isStudent = (req, res, next) => {
-  if (req.user.role !== "student") {
-    return res.status(403).json({ msg: "Access denied: Students only" });
-  }
-  next();
-};
-
-// All student routes protected by JWT and student role
+// Apply JWT protection and rate limiting to all routes
 router.use(verifyToken);
-router.use(isStudent);
+router.use(rateLimitByUser);
 
-// GET /api/student/dashboard
-router.get("/dashboard", getStudentDashboard);
+// === STUDENT-ONLY ROUTES ===
 
-// GET /api/student/timetable
-// optional query params: ?day=Monday&facultyId=...&subject=...&room=...&limit=50&page=1
-router.get("/timetable", getStudentTimetable);
+// Dashboard & Profile (Student only)
+router.get("/dashboard", isStudent, getStudentDashboard);
+router.get("/profile", isStudent, getStudentProfile);
+router.put("/profile", isStudent, updateStudentProfile);
 
-// GET /api/student/timetable/export?format=ics
-router.get("/timetable/export", exportStudentTimetableICS);
+// Timetable Management (Student only)
+router.get("/timetable", isStudent, getStudentTimetable);
+router.get("/timetable/export", isStudent, exportStudentTimetableICS);
+router.get("/timetable/search", isStudent, searchTimetable);
 
-// GET /api/student/notifications?limit=20
-router.get("/notifications", getStudentNotifications);
+// Notifications (Student only)
+router.get("/notifications", isStudent, getStudentNotifications);
+router.post("/notifications/mark-read", isStudent, markNotificationsRead);
+router.put("/notifications/mark-all-read", isStudent, markNotificationsRead);
 
-// POST /api/student/notifications/mark-read
-router.post("/notifications/mark-read", markNotificationsRead);
-
-// GET /api/student/timetable/search?q=Data%20Structures
-router.get("/timetable/search", searchTimetable);
+// Academic Resources (Student only)
+router.get("/attendance", isStudent, getAttendanceSummary);
+router.get("/courses/:courseId/materials", isStudent, getCourseMaterials);
 
 export default router;
