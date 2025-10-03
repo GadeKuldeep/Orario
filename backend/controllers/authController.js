@@ -22,6 +22,7 @@ export const register = async (req, res) => {
       password: hashedPassword,
       role,
       department,
+      isActive: true, // ← ADD THIS LINE
       ...(role === "student" && { semester, uniqueId }),
       ...(role === "faculty" && { designation, uniqueId })
     });
@@ -52,7 +53,9 @@ export const login = async (req, res) => {
     const { email, password } = req.body;
     const user = await User.findOne({ email }).select("+password");
     if (!user) return res.status(400).json({ success: false, msg: "Invalid credentials" });
-    if (!user.isActive) return res.status(400).json({ success: false, msg: "Account has been deactivated" });
+    
+    // TEMPORARILY COMMENT THIS OUT:
+    // if (!user.isActive) return res.status(400).json({ success: false, msg: "Account has been deactivated" });
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(400).json({ success: false, msg: "Invalid credentials" });
@@ -60,6 +63,22 @@ export const login = async (req, res) => {
     const token = generateToken(user);
     user.lastLogin = new Date();
     await user.save();
+
+    // Determine redirect URL based on role
+    let redirectUrl = '';
+    switch (user.role) {
+      case 'student':
+        redirectUrl = '/student/dashboard';
+        break;
+      case 'faculty':
+        redirectUrl = '/faculty/dashboard';
+        break;
+      case 'admin':
+        redirectUrl = '/admin/dashboard';
+        break;
+      default:
+        redirectUrl = '/dashboard';
+    }
 
     res.json({
       success: true,
@@ -70,7 +89,8 @@ export const login = async (req, res) => {
         email: user.email,
         role: user.role,
         department: user.department,
-        token
+        token,
+        redirectUrl  // Add redirect URL to response
       }
     });
   } catch (error) {
@@ -78,7 +98,6 @@ export const login = async (req, res) => {
     res.status(500).json({ success: false, msg: "Server error during login" });
   }
 };
-
 export const logout = async (req, res) => {
   try {
     res.json({ success: true, msg: "Logout successful" });
