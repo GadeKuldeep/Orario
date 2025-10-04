@@ -64,7 +64,7 @@ const ResetPassword = () => {
       if (data.success) {
         setMessage('Password reset successfully! You can now login with your new password.');
         setTimeout(() => {
-          navigate('/login');
+          navigate('/auth/login');
         }, 3000);
       } else {
         setError(data.msg || 'Password reset failed');
@@ -77,7 +77,7 @@ const ResetPassword = () => {
   };
 
   const handleBackToLogin = () => {
-    navigate('/login');
+    navigate('/auth/login');
   };
 
   return (

@@ -91,7 +91,7 @@ const Landing = () => {
   };
 
   const goToLogin = () => {
-    navigate("/login");
+    navigate("/auth/login");
   };
 
   const goToDashboard = () => {

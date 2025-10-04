@@ -63,7 +63,7 @@ const Register = () => {
         // Store token and redirect to login
         localStorage.setItem('token', data.data.token);
         localStorage.setItem('user', JSON.stringify(data.data));
-        navigate('/login');
+        navigate('/auth/login');
       } else {
         setError(data.msg || 'Registration failed');
       }
@@ -75,7 +75,7 @@ const Register = () => {
   };
 
   const handleLogin = () => {
-    navigate('/login');
+    navigate('/auth/login');
   };
 
   return (

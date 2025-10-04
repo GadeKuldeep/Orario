@@ -39,7 +39,7 @@ const ForgotPassword = () => {
   };
 
   const handleBackToLogin = () => {
-    navigate('/login');
+    navigate('/api/login');
   };
 
   return (
