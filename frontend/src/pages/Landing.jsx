@@ -1,8 +1,8 @@
 import React, { useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import "./LandingPage.css";
+import "./Landing.css";
 
-const LandingPage = () => {
+const Landing = () => {
   const homeRef = useRef(null);
   const aboutRef = useRef(null);
   const featuresRef = useRef(null);
@@ -21,15 +21,15 @@ const LandingPage = () => {
         console.log("Fetching landing page data...");
         
         const token = localStorage.getItem('token');
-        const headers = token ? { 'Authorization': `Bearer ${token}` } : {};
+        const headers = {
+          'Content-Type': 'application/json',
+          ...(token && { 'Authorization': `Bearer ${token}` })
+        };
         
-        const response = await fetch('http://localhost:5000/api/landing', {
+        const response = await fetch('http://localhost:3000/api/', {
           method: 'GET',
-          headers: {
-            'Content-Type': 'application/json',
-            ...headers
-          },
-          credentials: 'include' // Important for cookies/sessions
+          headers: headers,
+          credentials: 'include'
         });
         
         console.log("Response status:", response.status);
@@ -95,7 +95,12 @@ const LandingPage = () => {
   };
 
   const goToDashboard = () => {
-    navigate("/dashboard");
+    // Navigate to role-specific dashboard
+    if (landingData?.userRole) {
+      navigate(`/${landingData.userRole}/dashboard`);
+    } else {
+      navigate("/dashboard");
+    }
   };
 
   // Background image carousel effect
@@ -121,17 +126,33 @@ const LandingPage = () => {
     const renderAdminPreview = () => (
       <div className="dashboard-preview admin-preview">
         <h3>Admin Dashboard</h3>
-        <div className="stats-grid">
-          <div className="stat-card">
-            <span className="stat-number">{adminData?.pendingApprovals || 0}</span>
-            <span className="stat-label">Pending Approvals</span>
+        <div className="preview-content">
+          <div className="stats-grid">
+            <div className="stat-card">
+              <span className="stat-number">{adminData?.pendingApprovals || 0}</span>
+              <span className="stat-label">Pending Approvals</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-number">{adminData?.maintenanceClassrooms || 0}</span>
+              <span className="stat-label">Classrooms in Maintenance</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-number">{adminData?.departmentStats?.length || 0}</span>
+              <span className="stat-label">Departments</span>
+            </div>
           </div>
-          <div className="stat-card">
-            <span className="stat-number">{adminData?.maintenanceClassrooms || 0}</span>
-            <span className="stat-label">Classrooms in Maintenance</span>
+          <div className="quick-actions">
+            <h4>Quick Actions</h4>
+            <div className="action-buttons">
+              {adminData?.quickActions?.map((action, index) => (
+                <button key={index} className="action-btn" onClick={() => navigate(action.route)}>
+                  {action.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-        <button className="dashboard-btn" onClick={goToDashboard}>
+        <button className="dashboard-btn primary" onClick={goToDashboard}>
           Go to Admin Dashboard
         </button>
       </div>
@@ -140,17 +161,44 @@ const LandingPage = () => {
     const renderFacultyPreview = () => (
       <div className="dashboard-preview faculty-preview">
         <h3>Faculty Dashboard</h3>
-        <div className="stats-grid">
-          <div className="stat-card">
-            <span className="stat-number">{facultyData?.todaySchedule?.length || 0}</span>
-            <span className="stat-label">Today's Classes</span>
+        <div className="preview-content">
+          <div className="stats-grid">
+            <div className="stat-card">
+              <span className="stat-number">{facultyData?.todaySchedule?.length || 0}</span>
+              <span className="stat-label">Today's Classes</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-number">{facultyData?.pendingSubstitutions || 0}</span>
+              <span className="stat-label">Pending Substitutions</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-number">{facultyData?.subjectCount || 0}</span>
+              <span className="stat-label">Subjects</span>
+            </div>
           </div>
-          <div className="stat-card">
-            <span className="stat-number">{facultyData?.pendingSubstitutions || 0}</span>
-            <span className="stat-label">Pending Substitutions</span>
+          {facultyData?.upcomingLeaves?.length > 0 && (
+            <div className="upcoming-leaves">
+              <h4>Upcoming Leaves</h4>
+              {facultyData.upcomingLeaves.slice(0, 2).map((leave, index) => (
+                <div key={index} className="leave-item">
+                  <span>{new Date(leave.date).toLocaleDateString()}</span>
+                  <span className={`leave-status ${leave.status}`}>{leave.status}</span>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="quick-actions">
+            <h4>Quick Actions</h4>
+            <div className="action-buttons">
+              {facultyData?.quickActions?.map((action, index) => (
+                <button key={index} className="action-btn" onClick={() => navigate(action.route)}>
+                  {action.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-        <button className="dashboard-btn" onClick={goToDashboard}>
+        <button className="dashboard-btn primary" onClick={goToDashboard}>
           Go to Faculty Dashboard
         </button>
       </div>
@@ -159,17 +207,40 @@ const LandingPage = () => {
     const renderStudentPreview = () => (
       <div className="dashboard-preview student-preview">
         <h3>Student Dashboard</h3>
-        <div className="stats-grid">
-          <div className="stat-card">
-            <span className="stat-number">{studentData?.todaySchedule?.length || 0}</span>
-            <span className="stat-label">Today's Classes</span>
+        <div className="preview-content">
+          <div className="stats-grid">
+            <div className="stat-card">
+              <span className="stat-number">{studentData?.todaySchedule?.length || 0}</span>
+              <span className="stat-label">Today's Classes</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-number">{studentData?.studentInfo?.enrolledSubjects || 0}</span>
+              <span className="stat-label">Enrolled Subjects</span>
+            </div>
+            <div className="stat-card">
+              <span className="stat-number">{studentData?.currentTimetable ? 'Active' : 'None'}</span>
+              <span className="stat-label">Current Timetable</span>
+            </div>
           </div>
-          <div className="stat-card">
-            <span className="stat-number">{studentData?.studentInfo?.enrolledSubjects || 0}</span>
-            <span className="stat-label">Enrolled Subjects</span>
+          {studentData?.studentInfo && (
+            <div className="student-info">
+              <h4>Student Information</h4>
+              <p><strong>Department:</strong> {studentData.studentInfo.department?.name}</p>
+              <p><strong>Semester:</strong> {studentData.studentInfo.semester}</p>
+            </div>
+          )}
+          <div className="quick-actions">
+            <h4>Quick Actions</h4>
+            <div className="action-buttons">
+              {studentData?.quickActions?.map((action, index) => (
+                <button key={index} className="action-btn" onClick={() => navigate(action.route)}>
+                  {action.label}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
-        <button className="dashboard-btn" onClick={goToDashboard}>
+        <button className="dashboard-btn primary" onClick={goToDashboard}>
           Go to Student Dashboard
         </button>
       </div>
@@ -177,6 +248,10 @@ const LandingPage = () => {
 
     return (
       <div className="role-preview-section">
+        <div className="preview-header">
+          <h2>Welcome back!</h2>
+          <p>Here's your personalized dashboard preview</p>
+        </div>
         {userRole === 'admin' && renderAdminPreview()}
         {userRole === 'faculty' && renderFacultyPreview()}
         {userRole === 'student' && renderStudentPreview()}
@@ -207,8 +282,16 @@ const LandingPage = () => {
             <span className="stat-label">Departments</span>
           </div>
           <div className="stat-card">
+            <span className="stat-number">{stats.totalSubjects || 0}</span>
+            <span className="stat-label">Subjects</span>
+          </div>
+          <div className="stat-card">
             <span className="stat-number">{stats.activeTimetables || 0}</span>
             <span className="stat-label">Active Timetables</span>
+          </div>
+          <div className="stat-card">
+            <span className="stat-number">{stats.todayAttendance || 0}</span>
+            <span className="stat-label">Today's Attendance</span>
           </div>
         </div>
       </div>
@@ -224,8 +307,13 @@ const LandingPage = () => {
         <h3>Recent Announcements</h3>
         <div className="announcements-list">
           {landingData.announcements.map((announcement, index) => (
-            <div key={index} className="announcement-card">
-              <h4>{announcement.title}</h4>
+            <div key={index} className={`announcement-card priority-${announcement.priority}`}>
+              <div className="announcement-header">
+                <h4>{announcement.title}</h4>
+                <span className={`priority-badge ${announcement.priority}`}>
+                  {announcement.priority}
+                </span>
+              </div>
               <p>{announcement.message}</p>
               <span className="announcement-date">
                 {new Date(announcement.createdAt).toLocaleDateString()}
@@ -243,18 +331,21 @@ const LandingPage = () => {
 
     return (
       <div className="notifications-section">
-        <h3>Recent Notifications</h3>
+        <h3>Your Notifications</h3>
         <div className="notifications-list">
           {landingData.notifications.slice(0, 5).map((notification, index) => (
             <div key={index} className={`notification-card ${notification.isRead ? 'read' : 'unread'}`}>
               <div className="notification-header">
                 <h4>{notification.title}</h4>
-                {!notification.isRead && <span className="notification-badge">New</span>}
-                {notification.actionRequired && <span className="action-required">Action Required</span>}
+                <div className="notification-badges">
+                  {!notification.isRead && <span className="notification-badge">New</span>}
+                  {notification.actionRequired && <span className="action-required">Action Required</span>}
+                  <span className={`notification-type ${notification.type}`}>{notification.type}</span>
+                </div>
               </div>
               <p>{notification.message}</p>
               <div className="notification-footer">
-                <span className="notification-type">{notification.type}</span>
+                <span className={`priority-indicator ${notification.priority}`}></span>
                 <span className="notification-date">
                   {new Date(notification.createdAt).toLocaleDateString()}
                 </span>
@@ -262,6 +353,11 @@ const LandingPage = () => {
             </div>
           ))}
         </div>
+        {landingData.notifications.length > 5 && (
+          <button className="view-all-btn" onClick={goToDashboard}>
+            View All Notifications
+          </button>
+        )}
       </div>
     );
   };
@@ -285,8 +381,13 @@ const LandingPage = () => {
           <li onClick={() => scrollToSection(aboutRef)}>About</li>
           <li onClick={() => scrollToSection(featuresRef)}>Features</li>
           <li onClick={() => scrollToSection(contactRef)}>Contact</li>
-          {landingData?.isAuthenticated && (
-            <li onClick={goToDashboard}>Dashboard</li>
+          {landingData?.isAuthenticated ? (
+            <>
+              <li onClick={goToDashboard}>Dashboard</li>
+              <li className="user-role-badge">{landingData.userRole}</li>
+            </>
+          ) : (
+            <li onClick={goToLogin}>Login</li>
           )}
         </ul>
       </nav>
@@ -309,20 +410,23 @@ const LandingPage = () => {
           )}
           {!landingData?.isAuthenticated ? (
             <button className="login-btn" onClick={goToLogin}>
-              Login
+              Login to Your Account
             </button>
           ) : (
-            <button className="dashboard-btn" onClick={goToDashboard}>
-              Go to Dashboard
-            </button>
+            <div className="user-welcome">
+              <p>Welcome back! You are logged in as <strong>{landingData.userRole}</strong></p>
+              <button className="dashboard-btn primary" onClick={goToDashboard}>
+                Go to Dashboard
+              </button>
+            </div>
           )}
         </div>
 
+        {/* System Stats - Always visible */}
+        <SystemStats />
+
         {/* Dashboard Preview for authenticated users */}
         {landingData?.isAuthenticated && <DashboardPreview />}
-
-        {/* System Stats */}
-        <SystemStats />
       </section>
 
       {/* About Section */}
@@ -376,7 +480,7 @@ const LandingPage = () => {
           </div>
         </div>
 
-        {/* Announcements */}
+        {/* Announcements - Always visible */}
         <Announcements />
 
         {/* Notifications for authenticated users */}
@@ -411,10 +515,13 @@ const LandingPage = () => {
       <footer className="footer">
         <div className="container">
           <p>&copy; 2024 Orario Timetable Management System. All rights reserved.</p>
+          {landingData?.timestamp && (
+            <p className="timestamp">Last updated: {new Date(landingData.timestamp).toLocaleString()}</p>
+          )}
         </div>
       </footer>
     </div>
   );
 };
 
-export default LandingPage;
+export default Landing;
