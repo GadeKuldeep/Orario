@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import Landing from "./pages/Landing.jsx";
+import Login from "./pages/Login.jsx";
 
 // Create a theme
 const theme = createTheme({
@@ -37,6 +38,7 @@ const App = () => {
       <Router>
         <Routes>
           <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Login />}/>
         </Routes>
       </Router>
     </ThemeProvider>
