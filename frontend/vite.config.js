@@ -11,7 +11,7 @@ export default defineConfig({
     port: 1573,
     proxy: !isProd ? { // Proxy only in development
       "/api": {
-        target: "https://orario-3.onrender.com/",
+        target: "http://localhost:3000/",
         changeOrigin: true,
         secure: false,
       },

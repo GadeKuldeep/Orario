@@ -23,7 +23,7 @@ const app = express();
 
 app.use(express.json());
 app.use(cors({
-  origin: ["https://orario-4.netlify.app", "http://localhost:5173"],
+  origin: ["https://orario-4.netlify.app", "http://localhost:1573"],
   credentials: true
 }));
 
