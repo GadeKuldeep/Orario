@@ -26,7 +26,7 @@ const Landing = () => {
           ...(token && { 'Authorization': `Bearer ${token}` })
         };
         
-        const response = await fetch('https://orario-3.onrender.com/', {
+        const response = await fetch('http://localhost:3000/api/', {
           method: 'GET',
           headers: headers,
           credentials: 'include'

@@ -1,23 +1,21 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
-// Detect environment the Vite way
+// Detect environment
 const isProd = import.meta.env?.MODE === "production";
 
 export default defineConfig({
   plugins: [react()],
-  base: "/", // crucial for SPA routing
+  base: "/",
   server: {
     port: 1573,
-    proxy: {
+    proxy: !isProd ? { // Proxy only in development
       "/api": {
-        target: isProd
-          ? "https://orario-3.onrender.com" // Render backend
-          : "http://localhost:3000/",        // Local backend
+        target: "https://orario-3.onrender.com/",
         changeOrigin: true,
         secure: false,
       },
-    },
+    } : undefined, // No proxy in production
   },
   build: {
     outDir: "dist",
