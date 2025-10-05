@@ -6,6 +6,7 @@ import Landing from "./pages/Landing.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
+import { Admin } from "./pages/Admin.jsx";
 
 // Create a theme
 const theme = createTheme({
@@ -43,6 +44,7 @@ const App = () => {
           <Route path="/auth/login" element={<Login />}/>
           <Route path="/auth/register" element={<Register />}/>
           <Route path="/auth/forgot-password" element={<ForgotPassword />}/>
+          <Route path="/admin/dashboard" element={<Admin />}/>
         </Routes>
       </Router>
     </ThemeProvider>
