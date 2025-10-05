@@ -29,7 +29,7 @@ app.use(cors({
 
 app.use("/api/", landingRoute);
 app.use("/api/auth", authRoute);
-app.use("/api/admin", adminRoute);
+app.use("/api/admin", adminRoute);  
 app.use("/api/attendance", attendanceRoute);
 app.use("/api/faculty", facultyRoute);
 app.use("/api/notification", notificationRoute);
