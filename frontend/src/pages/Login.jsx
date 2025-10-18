@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import "./Login.css"
 
 const Login = () => {
@@ -9,7 +8,6 @@ const Login = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const navigate = useNavigate();
 
   const handleChange = (e) => {
     setFormData({
@@ -31,13 +29,13 @@ const Login = () => {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(formData),
+        credentials: 'include' // Important for cookies
       });
 
       const data = await response.json();
 
       if (data.success) {
-        // Store token in localStorage
-        localStorage.setItem('token', data.data.token);
+        // Store only non-sensitive user data in localStorage
         localStorage.setItem('user', JSON.stringify({
           id: data.data.id,
           name: data.data.name,
@@ -46,8 +44,10 @@ const Login = () => {
           department: data.data.department
         }));
 
-        // Redirect based on user role
-        navigate(data.data.redirectUrl);
+        // Backend will handle the redirect via HTTP redirect
+        // The browser will automatically follow the redirect
+        window.location.href = data.data.redirectUrl;
+        
       } else {
         setError(data.msg || 'Login failed');
       }
@@ -59,11 +59,11 @@ const Login = () => {
   };
 
   const handleForgotPassword = () => {
-    navigate('/auth/forgot-password');
+    window.location.href = '/auth/forgot-password';
   };
 
   const handleRegister = () => {
-    navigate('/auth/register');
+    window.location.href = '/auth/register';
   };
 
   return (

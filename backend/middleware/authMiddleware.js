@@ -101,3 +101,44 @@ export const isStudent = (req, res, next) => {
   }
   next();
 };
+// Add this to your existing middleware file
+export const verifyTokenCookie = (req, res, next) => {
+  // First try to get token from cookie (for page navigation)
+  let token = req.cookies.token;
+  
+  // Fallback to header (for API calls from frontend)
+  if (!token) {
+    token = req.headers["authorization"]?.split(" ")[1];
+  }
+
+  if (!token) {
+    return res.status(403).json({ msg: "No token provided" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    return res.status(401).json({ msg: "Unauthorized", error: err.message });
+  }
+};
+
+export const requireAuthPage = (req, res, next) => {
+  // This middleware is for page requests (returns HTML)
+  const token = req.cookies.token;
+
+  if (!token) {
+    return res.redirect('/auth/login');
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = decoded;
+    next();
+  } catch (err) {
+    // Clear invalid token and redirect to login
+    res.clearCookie('token');
+    return res.redirect('/auth/login');
+  }
+};

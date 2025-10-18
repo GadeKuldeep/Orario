@@ -64,6 +64,14 @@ export const login = async (req, res) => {
     user.lastLogin = new Date();
     await user.save();
 
+    // Set HTTP-only cookie for session management
+    res.cookie('token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // Use secure in production
+      sameSite: 'strict',
+      maxAge: 24 * 60 * 60 * 1000 // 24 hours
+    });
+
     // Determine redirect URL based on role
     let redirectUrl = '';
     switch (user.role) {
@@ -89,15 +97,16 @@ export const login = async (req, res) => {
         email: user.email,
         role: user.role,
         department: user.department,
-        token,
-        redirectUrl  // Add redirect URL to response
+        redirectUrl
       }
+      // Note: Token is no longer sent in response body, it's in HTTP-only cookie
     });
   } catch (error) {
     console.error("Login error:", error);
     res.status(500).json({ success: false, msg: "Server error during login" });
   }
 };
+
 export const logout = async (req, res) => {
   try {
     res.json({ success: true, msg: "Logout successful" });
