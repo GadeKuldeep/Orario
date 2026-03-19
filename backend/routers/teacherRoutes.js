@@ -4,11 +4,11 @@ import {
     updateAvailability, 
     getAllTeacherAvailabilities 
 } from "../controllers/teacherController.js";
-import { verifyToken, isSameDepartment } from "../middleware/authMiddleware.js";
+import { verifyToken, verifyTokenCookie, isSameDepartment } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-router.use(verifyToken);
+router.use(verifyTokenCookie);
 
 // Teacher's own availability management
 router.get("/availability", getAvailability);

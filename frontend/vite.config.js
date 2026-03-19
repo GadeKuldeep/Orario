@@ -20,8 +20,9 @@ export default defineConfig(({ mode }) => {
       },
     },
     build: {
-      outDir: "dist",
+      outDir: "../backend/build",
       sourcemap: false,
+      emptyOutDir: true,
     },
   };
 });

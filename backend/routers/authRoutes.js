@@ -18,7 +18,8 @@ import {
 } from "../controllers/authController.js";
 
 import { 
-  verifyToken, 
+  verifyToken,
+  verifyTokenCookie,
   isAdmin, 
   isAdminOrSelf,
   isAdminOrFaculty,
@@ -29,16 +30,14 @@ import {
 const router = express.Router();
 
 // === PUBLIC ROUTES ===
-
-// Authentication routes (with rate limiting potential)
 router.post("/register", register);
 router.post("/login", login);
 router.post("/forgot-password", forgotPassword);
 router.post("/reset-password", resetPassword);
 
 // === PROTECTED ROUTES ===
-router.use(verifyToken); // Apply JWT verification to all routes below
-router.use(rateLimitByUser); // Apply rate limiting to authenticated routes
+router.use(verifyTokenCookie); // Accept cookie OR Authorization header
+router.use(rateLimitByUser);
 
 // === USER MANAGEMENT ROUTES ===
 
