@@ -39,6 +39,7 @@ import {
   getReports,
   getTimetables,
   exportData,
+  exportTimetableAsPDF,
   getOptimizationLogs,
   
   // System Management
@@ -200,6 +201,12 @@ router.get("/reports/:reportType", isAdminOrHOD, [
 router.get("/reports/export/:format", isAdminOrHOD, [
   param("format").isIn(['pdf', 'excel', 'csv'])
 ], exportData);
+
+// 📄 Timetable PDF Export with NEP 2020 Compliance
+router.post("/timetable/:timetableId/export-pdf", isAdminOrHOD, [
+  param("timetableId").isMongoId(),
+  body("format").optional().isIn(['pdf', 'all'])
+], exportTimetableAsPDF);
 
 router.get("/optimization-logs", isAdmin, getOptimizationLogs);
 router.get("/optimization-logs/:departmentId", isAdminOrHOD, [

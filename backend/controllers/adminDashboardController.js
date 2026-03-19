@@ -7,6 +7,10 @@ import Attendance from "../models/Attendance.js";
 import Notification from "../models/Notification.js";
 import OptimizationLog from "../models/OptimizationLog.js";
 import SystemLog from "../models/SystemLog.js";
+import { generateTimetablePDF, exportTimetableMultipleFormats } from "../utils/pdfExport.js";
+import { validateNEP2020Compliance } from "../utils/nep2020Compliance.js";
+import path from "path";
+import fs from "fs";
 
 export const getDashboardOverview = async (req, res) => {
   try {
@@ -480,19 +484,78 @@ export const generateTimetable = async (req, res) => {
   try {
     const { department, semester, academicYear, constraints } = req.body;
 
+    // **INPUT VALIDATION LAYER**
+    // Validate required fields
+    if (!department || !semester || !academicYear) {
+      return res.status(400).json({ 
+        success: false, 
+        msg: "Missing required fields: department, semester, academicYear" 
+      });
+    }
+
+    // Validate academic year format (e.g., "2024-2025")
+    if (!/^\d{4}-\d{4}$/.test(academicYear)) {
+      return res.status(400).json({ 
+        success: false, 
+        msg: "Invalid academicYear format. Expected: YYYY-YYYY (e.g., 2024-2025)" 
+      });
+    }
+
+    // Validate semester (1-8)
+    const semesterNum = parseInt(semester);
+    if (isNaN(semesterNum) || semesterNum < 1 || semesterNum > 8) {
+      return res.status(400).json({ 
+        success: false, 
+        msg: "Invalid semester. Must be a number between 1 and 8." 
+      });
+    }
+
+    // Validate department exists
+    const departmentData = await Department.findById(department).lean();
+    if (!departmentData) {
+      return res.status(400).json({ 
+        success: false, 
+        msg: "Invalid department ID. Department not found." 
+      });
+    }
+
     // 1. GATHER ALL DATA FOR THE DECISION ENGINE
-    const [subjects, faculty, classrooms, departmentData, TeacherAvailability] = await Promise.all([
-      Subject.find({ department, semester }).lean(),
+    const [subjects, faculty, classrooms, TeacherAvailability] = await Promise.all([
+      Subject.find({ department, semester: semesterNum }).lean(),
       User.find({ department, role: 'faculty', isActive: true }).lean(),
       Classroom.find({ department, isActive: true }).lean(),
-      Department.findById(department).lean(),
       import('../models/TeacherAvailability.js').then(m => m.default)
     ]);
 
-    if (!subjects.length || !faculty.length || !classrooms.length) {
+    // Validate sufficient data exists
+    if (!subjects.length) {
       return res.status(400).json({ 
         success: false, 
-        msg: "Insufficient data for timetable generation (Check if students/faculty/rooms/subjects are assigned)." 
+        msg: "No subjects found for this semester. Assign subjects before generating timetable." 
+      });
+    }
+
+    if (!faculty.length) {
+      return res.status(400).json({ 
+        success: false, 
+        msg: "No faculty members found for this department. Add faculty before generating timetable." 
+      });
+    }
+
+    if (!classrooms.length) {
+      return res.status(400).json({ 
+        success: false, 
+        msg: "No classrooms found for this department. Add classrooms before generating timetable." 
+      });
+    }
+
+    // Validate all subjects have faculty assigned
+    const subjectsWithoutFaculty = subjects.filter(s => !s.facultyAssigned || s.facultyAssigned.length === 0);
+    if (subjectsWithoutFaculty.length > 0) {
+      return res.status(400).json({ 
+        success: false, 
+        msg: `${subjectsWithoutFaculty.length} subjects have no faculty assigned. Assign faculty to all subjects.`,
+        unassignedSubjects: subjectsWithoutFaculty.map(s => ({ id: s._id, name: s.name }))
       });
     }
 
@@ -500,43 +563,98 @@ export const generateTimetable = async (req, res) => {
     const facultyIds = faculty.map(f => f._id);
     const availability = await TeacherAvailability.find({ teacher: { $in: facultyIds } }).lean();
 
-    // 2. CALL THE PYTHON FASTAPI DECISION ENGINE
+    // 2. CALL THE PYTHON FASTAPI DECISION ENGINE WITH RETRY LOGIC
     const PYTHON_SERVICE_URL = process.env.DECISION_ENGINE_URL || "http://localhost:8000/generate-timetable";
+    const MAX_RETRIES = 3;
+    const TIMEOUT_MS = 30000; // 30 second timeout
     
-    const pythonResponse = await fetch(PYTHON_SERVICE_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        subjects,
-        faculty,
-        availability,
-        classrooms,
-        constraints: constraints || {},
-        department: departmentData,
-        semester: parseInt(semester)
-      })
-    });
+    let pythonResponse = null;
+    let lastError = null;
 
-    if (!pythonResponse.ok) {
-      throw new Error(`Python Decision Engine failed: ${pythonResponse.statusText}`);
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+        pythonResponse = await fetch(PYTHON_SERVICE_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            subjects,
+            faculty,
+            availability,
+            classrooms,
+            constraints: constraints || {},
+            department: departmentData,
+            semester: semesterNum
+          }),
+          signal: controller.signal
+        });
+
+        clearTimeout(timeoutId);
+
+        if (pythonResponse.ok) {
+          break; // Success on this attempt
+        } else if (attempt < MAX_RETRIES) {
+          lastError = `Decision engine returned ${pythonResponse.status}. Retrying...`;
+          // Exponential backoff: 1s, 2s, 4s
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
+        } else {
+          throw new Error(`Decision Engine failed after ${MAX_RETRIES} attempts: ${pythonResponse.statusText}`);
+        }
+      } catch (fetchError) {
+        lastError = fetchError.message;
+        if (attempt < MAX_RETRIES) {
+          console.warn(`Attempt ${attempt}/${MAX_RETRIES} failed:`, fetchError.message);
+          // Exponential backoff: 1s, 2s, 4s
+          await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt - 1) * 1000));
+        } else {
+          throw new Error(`Decision Engine unreachable after ${MAX_RETRIES} attempts. Service may be down.`);
+        }
+      }
     }
 
-    const result = await pythonResponse.json();
-    
+    if (!pythonResponse || !pythonResponse.ok) {
+      return res.status(503).json({ 
+        success: false, 
+        msg: "Scheduling service currently unavailable. Please try again in a moment.",
+        error: lastError
+      });
+    }
+
+    let result;
+    try {
+      result = await pythonResponse.json();
+    } catch (parseError) {
+      return res.status(502).json({ 
+        success: false, 
+        msg: "Invalid response from scheduling service. Please contact administrator.",
+        error: parseError.message
+      });
+    }
+
+    // Validate result has expected structure
+    if (!result.timetables || !Array.isArray(result.timetables) || result.timetables.length === 0) {
+      return res.status(502).json({ 
+        success: false, 
+        msg: "Scheduling service returned invalid data format. No timetable options generated."
+      });
+    }
+
     // 3. STORE THE DRAFT OPTIONS
     const savedTimetables = [];
     for (const option of result.timetables) {
-        const title = `${departmentData.name} - Sem ${semester} (${academicYear}) - Option ${option.option}`;
+        const title = `${departmentData.name} - Sem ${semesterNum} (${academicYear}) - Option ${option.option || savedTimetables.length + 1}`;
         const timetable = new Timetable({
           title,
           department,
-          semester,
+          semester: semesterNum,
           academicYear,
-          schedule: option.schedule,
+          schedule: option.schedule || [],
           status: 'draft',
           generatedBy: req.user.id,
           optimizationMetrics: {
-              fitnessScore: option.fitnessScore,
+              fitnessScore: option.fitnessScore || 0,
               conflictsResolved: option.conflicts || 0
           }
         });
@@ -546,14 +664,18 @@ export const generateTimetable = async (req, res) => {
 
     res.status(201).json({
       success: true,
-      msg: "Intelligent timetables generated successfully. Waiting for HDP/Admin review.",
+      msg: "Intelligent timetables generated successfully. Waiting for HOD/Admin review.",
       timetables: savedTimetables,
-      suggestion: result.suggestion
+      suggestion: result.suggestion || "Review the generated timetables for approval."
     });
 
   } catch (error) {
     console.error("Timetable generation error:", error);
-    res.status(500).json({ success: false, msg: "Scheduling service currently unavailable. Using local fallback..." });
+    res.status(500).json({ 
+      success: false, 
+      msg: "Unexpected server error during timetable generation.",
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
+    });
   }
 };
 
@@ -626,6 +748,130 @@ export const exportData = async (req, res) => {
       success: false, 
       msg: "Server error during data export",
       error: error.message 
+    });
+  }
+};
+
+/**
+ * Export timetable as PDF with NEP 2020 compliance details
+ */
+export const exportTimetableAsPDF = async (req, res) => {
+  try {
+    const { timetableId, format = "pdf" } = req.body;
+
+    if (!timetableId) {
+      return res.status(400).json({
+        success: false,
+        msg: "Timetable ID is required"
+      });
+    }
+
+    // Fetch timetable with all references
+    const timetable = await Timetable.findById(timetableId)
+      .populate("department")
+      .populate("generatedBy", "name email");
+
+    if (!timetable) {
+      return res.status(404).json({
+        success: false,
+        msg: "Timetable not found"
+      });
+    }
+
+    // Fetch related subjects
+    const subjects = await Subject.find({
+      department: timetable.department._id,
+      semester: timetable.semester
+    });
+
+    // Validate NEP 2020 compliance
+    const complianceResult = await validateNEP2020Compliance(
+      timetable,
+      subjects,
+      timetable.department
+    );
+
+    // Update timetable with compliance info
+    timetable.isNEP2020Compliant = complianceResult.isCompliant;
+    timetable.complianceCheckpoints = complianceResult.checkpoints;
+    await timetable.save();
+
+    // Create output directory if it doesn't exist
+    const outputDir = path.join(process.cwd(), "exports", "timetables");
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
+    }
+
+    let filePathToSend;
+
+    if (format === "pdf" || format === "all") {
+      // Generate PDF
+      const timestamp = Date.now();
+      const filename = path.join(
+        outputDir,
+        `timetable_${timetable.department.code}_sem${timetable.semester}_${timestamp}.pdf`
+      );
+
+      await generateTimetablePDF(timetable, timetable.department, subjects, filename);
+
+      if (format === "pdf") {
+        // Send PDF file as download
+        return res.download(filename, (err) => {
+          if (err && err.code !== "ERR_HTTP_HEADERS_SENT") {
+            console.error("PDF download error:", err);
+          }
+          // Optionally delete file after download
+          // fs.unlink(filename, (err) => {
+          //   if (err) console.error("Failed to delete temp file:", err);
+          // });
+        });
+      }
+
+      filePathToSend = filename;
+    }
+
+    if (format === "all") {
+      // Generate all formats
+      const timestamp = Date.now();
+      const basename = `timetable_${timetable.department.code}_sem${timetable.semester}_${timestamp}`;
+
+      const results = await exportTimetableMultipleFormats(
+        timetable,
+        timetable.department,
+        subjects,
+        outputDir
+      );
+
+      return res.json({
+        success: true,
+        msg: "Timetable exported in all formats",
+        exports: {
+          pdf: results.pdf,
+          json: results.json,
+          csv: results.csv
+        },
+        compliance: complianceResult
+      });
+    }
+
+    res.json({
+      success: true,
+      msg: "Timetable exported successfully",
+      file: filePathToSend,
+      timetableId: timetable._id,
+      compliance: {
+        isCompliant: complianceResult.isCompliant,
+        compliancePercentage: complianceResult.compliancePercentage,
+        recommendations: complianceResult.recommendations
+      }
+    });
+
+  } catch (error) {
+    console.error("Timetable PDF export error:", error);
+    res.status(500).json({
+      success: false,
+      msg: "Failed to export timetable as PDF",
+      error: process.env.NODE_ENV === "development" ? error.message : undefined
     });
   }
 };

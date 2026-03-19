@@ -8,6 +8,7 @@ import Landing from "./pages/Landing.jsx";
 import Login from "./pages/Login.jsx";
 import Register from "./pages/Register.jsx";
 import ForgotPassword from "./pages/ForgotPassword.jsx";
+import ResetPassword from "./pages/ResetPassword.jsx";
 import { Admin } from "./pages/Admin.jsx";
 import Student from "./pages/Student.jsx";
 import Faculty from "./pages/Faculty.jsx";
@@ -47,6 +48,7 @@ const App = () => {
             <Route path="/auth/login" element={<Login />} />
             <Route path="/auth/register" element={<Register />} />
             <Route path="/auth/forgot-password" element={<ForgotPassword />} />
+            <Route path="/auth/reset-password" element={<ResetPassword />} />
             <Route path="/admin/dashboard" element={<Admin />} />
             <Route path="/student/dashboard" element={<Student />} />
             <Route path="/faculty/dashboard" element={<Faculty />} />

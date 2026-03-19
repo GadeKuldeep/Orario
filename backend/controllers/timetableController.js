@@ -1024,17 +1024,134 @@ async function checkFacultyTimetableAccess(timetable, facultyId) {
  */
 async function validateScheduleUpdates(schedule, departmentId) {
   const errors = [];
-  
-  // Implementation would validate:
-  // - Slot structure and timing
-  // - Faculty availability
-  // - Classroom availability
-  // - Subject requirements
-  // - Department constraints
-  
+  const warnings = [];
+
+  // Validate schedule is an array
+  if (!Array.isArray(schedule)) {
+    errors.push("Schedule must be an array of day schedules");
+    return { valid: false, errors, warnings };
+  }
+
+  // Get department config
+  const department = await Department.findById(departmentId).lean();
+  if (!department) {
+    errors.push("Department not found for validation");
+    return { valid: false, errors, warnings };
+  }
+
+  const validDays = department.workingDays || [];
+  const validSlots = department.timeSlots || [];
+
+  // Validate each day's schedule
+  const classroomUsageMap = new Map(); // Track simultaneous classroom usage
+  const facultyUsageMap = new Map();   // Track simultaneous faculty usage
+  const subjectHoursMap = new Map();   // Track teaching hours per subject
+
+  for (let dayIndex = 0; dayIndex < schedule.length; dayIndex++) {
+    const daySchedule = schedule[dayIndex];
+
+    // Validate day name
+    if (!daySchedule.day || !validDays.includes(daySchedule.day)) {
+      errors.push(`Invalid day name: ${daySchedule.day}`);
+      continue;
+    }
+
+    // Validate slots array
+    if (!Array.isArray(daySchedule.slots)) {
+      errors.push(`Day ${daySchedule.day} must have a slots array`);
+      continue;
+    }
+
+    // Validate each slot
+    for (let slotIndex = 0; slotIndex < daySchedule.slots.length; slotIndex++) {
+      const slot = daySchedule.slots[slotIndex];
+
+      // Check slot structure
+      if (!slot.timeSlot || !validSlots.find(s => s.slot === slot.timeSlot)) {
+        errors.push(`Invalid time slot: ${slot.timeSlot} on ${daySchedule.day}`);
+        continue;
+      }
+
+      // Validate slot content only if assigned
+      if (slot.subject && slot.faculty && slot.classroom) {
+        const slotKey = `${daySchedule.day}-${slot.timeSlot}`;
+
+        // Check for classroom double-booking
+        const roomKey = `${slotKey}-${slot.classroom.toString()}`;
+        if (classroomUsageMap.has(roomKey)) {
+          errors.push(`Classroom conflict: Room ${slot.classroom} booked twice at ${daySchedule.day} ${slot.timeSlot}`);
+        } else {
+          classroomUsageMap.set(roomKey, true);
+        }
+
+        // Check for faculty double-booking
+        const facultyKey = `${slotKey}-${slot.faculty.toString()}`;
+        if (facultyUsageMap.has(facultyKey)) {
+          errors.push(`Faculty conflict: Faculty member assigned twice at ${daySchedule.day} ${slot.timeSlot}`);
+        } else {
+          facultyUsageMap.set(facultyKey, true);
+        }
+
+        // Track subject teaching hours
+        const subjectId = slot.subject.toString();
+        subjectHoursMap.set(subjectId, (subjectHoursMap.get(subjectId) || 0) + 1);
+      }
+    }
+  }
+
+  // Validate faculty availability against TeacherAvailability records
+  if (departmentId && facultyUsageMap.size > 0) {
+    const facultyIds = Array.from(new Set(
+      schedule.flatMap(day =>
+        day.slots.filter(slot => slot.faculty).map(slot => slot.faculty.toString())
+      )
+    ));
+
+    if (facultyIds.length > 0) {
+      const availabilities = await import("../models/TeacherAvailability.js")
+        .then(m => m.default.find({ teacher: { $in: facultyIds } }).lean());
+
+      const unavailableSlots = new Map();
+      availabilities.forEach(av => {
+        if (av.status === "unavailable") {
+          const key = `${av.day}-${av.slot}-${av.teacher.toString()}`;
+          unavailableSlots.set(key, true);
+        }
+      });
+
+      schedule.forEach(day => {
+        day.slots.forEach((slot, index) => {
+          if (slot.faculty) {
+            const slotKey = `${day.day}-${slot.timeSlot}-${slot.faculty.toString()}`;
+            if (unavailableSlots.has(slotKey)) {
+              warnings.push(`Faculty ${slot.faculty} marked unavailable for ${day.day} ${slot.timeSlot}`);
+            }
+          }
+        });
+      });
+    }
+  }
+
+  // Validate required teaching hours if available
+  const subjects = await Subject.find({ department: departmentId }).lean();
+  subjects.forEach(subject => {
+    const assignedHours = subjectHoursMap.get(subject._id.toString()) || 0;
+    const requiredHours = subject.maxClassesPerWeek || 4;
+    
+    if (assignedHours < requiredHours) {
+      warnings.push(`Subject ${subject.name} has ${assignedHours} classes but ${requiredHours} are recommended`);
+    }
+  });
+
   return {
     valid: errors.length === 0,
-    errors
+    errors,
+    warnings,
+    stats: {
+      totalDays: schedule.length,
+      totalSlots: schedule.reduce((sum, day) => sum + day.slots.length, 0),
+      assignedSlots: Array.from(classroomUsageMap.keys()).length
+    }
   };
 }
 
@@ -1054,24 +1171,148 @@ async function detectTimetableConflicts(timetable) {
 }
 
 /**
- * Detect and mark conflicts in timetable (internal)
+ * Detect and mark conflicts in timetable
  */
 async function detectAndMarkConflicts(timetable) {
-  const conflicts = await detectTimetableConflicts(timetable);
-  
+  const conflicts = {
+    faculty: [],
+    classroom: [],
+    subject: [],
+    availability: []
+  };
+
+  // Get faculty availability map
+  const facultyIds = new Set();
+  timetable.schedule.forEach(day => {
+    day.slots.forEach(slot => {
+      if (slot.faculty) facultyIds.add(slot.faculty.toString());
+    });
+  });
+
+  const TeacherAvailability = (await import('../models/TeacherAvailability.js')).default;
+  const availabilityRecords = await TeacherAvailability.find({
+    teacher: { $in: Array.from(facultyIds) }
+  }).lean();
+
+  const unavailableSlots = new Map();
+  availabilityRecords.forEach(av => {
+    if (av.status === "unavailable") {
+      const key = `${av.day}-${av.slot}-${av.teacher.toString()}`;
+      unavailableSlots.set(key, av);
+    }
+  });
+
   // Reset all conflict flags
   timetable.schedule.forEach(day => {
     day.slots.forEach(slot => {
       slot.hasConflict = false;
-      slot.conflictType = undefined;
-      slot.conflictResolved = false;
+      slot.conflictType = null;
+      slot.conflictDetails = [];
     });
   });
-  
-  // Mark new conflicts
-  conflicts.forEach(conflict => {
-    // Implementation would mark specific slots with conflicts
-  });
+
+  // Detection maps
+  const classroomBookings = new Map(); // day-slot -> [classrooms]
+  const facultyBookings = new Map();   // day-slot -> [faculty]
+  const subjectCount = new Map();      // subject -> count
+
+  // First pass: detect conflicts
+  for (let dayIndex = 0; dayIndex < timetable.schedule.length; dayIndex++) {
+    const daySchedule = timetable.schedule[dayIndex];
+
+    for (let slotIndex = 0; slotIndex < daySchedule.slots.length; slotIndex++) {
+      const slot = daySchedule.slots[slotIndex];
+
+      if (!slot.subject || !slot.faculty || !slot.classroom) continue;
+
+      const slotKey = `${daySchedule.day}-${slot.timeSlot}`;
+      const facultyId = slot.faculty.toString();
+      const classroomId = slot.classroom.toString();
+      const subjectId = slot.subject.toString();
+
+      // Check faculty availability
+      const availKey = `${daySchedule.day}-${slot.timeSlot}-${facultyId}`;
+      if (unavailableSlots.has(availKey)) {
+        slot.hasConflict = true;
+        slot.conflictType = "availability";
+        slot.conflictDetails.push({
+          type: "Faculty unavailable",
+          reason: unavailableSlots.get(availKey).reason,
+          severity: "Hard"
+        });
+        conflicts.availability.push({
+          day: daySchedule.day,
+          slot: slot.timeSlot,
+          faculty: facultyId,
+          subject: subjectId
+        });
+      }
+
+      // Check classroom double-booking
+      const classroomKey = `${slotKey}-${classroomId}`;
+      if (classroomBookings.has(classroomKey)) {
+        slot.hasConflict = true;
+        if (slot.conflictType !== "availability") slot.conflictType = "classroom";
+        slot.conflictDetails.push({
+          type: "Classroom double-booked",
+          classroom: classroomId,
+          severity: "Hard"
+        });
+        conflicts.classroom.push({
+          day: daySchedule.day,
+          slot: slot.timeSlot,
+          classroom: classroomId,
+          subjects: [subjectId]
+        });
+      } else {
+        classroomBookings.set(classroomKey, true);
+      }
+
+      // Check faculty double-booking
+      const facultyKey = `${slotKey}-${facultyId}`;
+      if (facultyBookings.has(facultyKey)) {
+        slot.hasConflict = true;
+        if (slot.conflictType !== "availability" && slot.conflictType !== "classroom") {
+          slot.conflictType = "faculty";
+        }
+        slot.conflictDetails.push({
+          type: "Faculty double-booked",
+          faculty: facultyId,
+          severity: "Hard"
+        });
+        conflicts.faculty.push({
+          day: daySchedule.day,
+          slot: slot.timeSlot,
+          faculty: facultyId,
+          subjects: [subjectId]
+        });
+      } else {
+        facultyBookings.set(facultyKey, true);
+      }
+
+      // Track subject teaching hours
+      subjectCount.set(subjectId, (subjectCount.get(subjectId) || 0) + 1);
+    }
+  }
+
+  // Update conflict summary on timetable
+  timetable.conflictsSummary = {
+    totalConflicts: conflicts.faculty.length + 
+                    conflicts.classroom.length + 
+                    conflicts.availability.length,
+    byType: {
+      faculty: conflicts.faculty.length,
+      classroom: conflicts.classroom.length,
+      availability: conflicts.availability.length
+    },
+    details: conflicts,
+    lastDetected: new Date()
+  };
+
+  // Save updated timetable
+  await timetable.save();
+
+  return conflicts;
 }
 
 /**

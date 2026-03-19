@@ -44,7 +44,60 @@ const timetableSchema = new mongoose.Schema(
     constraints: {
       hardConstraints: [String],
       softConstraints: [String]
-    }
+    },
+    // NEP 2020: Delivery Mode & Online Configuration
+    deliveryConfig: {
+      mode: {
+        type: String,
+        enum: ["offline", "online", "blended"],
+        default: "offline"
+      },
+      onlineClasses: [{
+        day: String,
+        timeSlot: String,
+        platform: String,
+        recordingAvailable: Boolean,
+        recordingURL: String
+      }],
+      blendedRatio: {
+        online: { type: Number, default: 0, min: 0, max: 100 },
+        offline: { type: Number, default: 100, min: 0, max: 100 }
+      }
+    },
+    // NEP 2020: Experiential Learning Hours Integration
+    experientialLearningSchedule: [{
+      week: Number,
+      activityType: String,
+      description: String,
+      hours: Number,
+      location: String,
+      industryPartner: String
+    }],
+    // Cross-institutional offerings tracking
+    crossInstitutionalParticipants: [{
+      institution: String,
+      department: String,
+      studentsEnrolled: Number,
+      faculty: { type: mongoose.Schema.Types.ObjectId, ref: "User" }
+    }],
+    // NEP 2020: Skill Assessment Tracking
+    skillAssessmentPlan: [{
+      skillName: String,
+      assessmentWeek: Number,
+      methods: [String],
+      rubric: String
+    }],
+    // NEP 2020 Compliance Flag
+    isNEP2020Compliant: {
+      type: Boolean,
+      default: false,
+      description: "Marks timetable as fully NEP 2020 compliant"
+    },
+    complianceCheckpoints: [{
+      checkpoint: String,
+      status: { type: String, enum: ["pending", "satisfied", "not-applicable"], default: "pending" },
+      remarks: String
+    }]
   },
   { timestamps: true }
 );
