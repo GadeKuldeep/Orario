@@ -480,147 +480,83 @@ export const generateTimetable = async (req, res) => {
   try {
     const { department, semester, academicYear, constraints } = req.body;
 
-    // Get all necessary data
-    const subjects = await Subject.find({ department, semester });
-    const faculty = await User.find({ department, role: 'faculty', isActive: true });
-    const classrooms = await Classroom.find({ department, isActive: true });
-    const departmentData = await Department.findById(department);
+    // 1. GATHER ALL DATA FOR THE DECISION ENGINE
+    const [subjects, faculty, classrooms, departmentData, TeacherAvailability] = await Promise.all([
+      Subject.find({ department, semester }).lean(),
+      User.find({ department, role: 'faculty', isActive: true }).lean(),
+      Classroom.find({ department, isActive: true }).lean(),
+      Department.findById(department).lean(),
+      import('../models/TeacherAvailability.js').then(m => m.default)
+    ]);
 
     if (!subjects.length || !faculty.length || !classrooms.length) {
       return res.status(400).json({ 
         success: false, 
-        msg: "Insufficient data for timetable generation" 
+        msg: "Insufficient data for timetable generation (Check if students/faculty/rooms/subjects are assigned)." 
       });
     }
 
-    // AI-powered timetable generation logic
-    const generatedSchedule = await generateOptimizedTimetable({
-      subjects,
-      faculty,
-      classrooms,
-      department: departmentData,
-      constraints
+    // Lookup availability
+    const facultyIds = faculty.map(f => f._id);
+    const availability = await TeacherAvailability.find({ teacher: { $in: facultyIds } }).lean();
+
+    // 2. CALL THE PYTHON FASTAPI DECISION ENGINE
+    const PYTHON_SERVICE_URL = process.env.DECISION_ENGINE_URL || "http://localhost:8000/generate-timetable";
+    
+    const pythonResponse = await fetch(PYTHON_SERVICE_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        subjects,
+        faculty,
+        availability,
+        classrooms,
+        constraints: constraints || {},
+        department: departmentData,
+        semester: parseInt(semester)
+      })
     });
 
-    const timetable = new Timetable({
-      title: `${departmentData.name} - Semester ${semester} - ${academicYear}`,
-      department,
-      semester,
-      academicYear,
-      schedule: generatedSchedule.schedule,
-      generatedBy: req.user.id,
-      validity: {
-        startDate: new Date(academicYear.split('-')[0], 0, 1), // Start of academic year
-        endDate: new Date(academicYear.split('-')[1], 11, 31)  // End of academic year
-      },
-      optimizationMetrics: generatedSchedule.metrics,
-      constraints: {
-        hardConstraints: constraints?.hardConstraints || [],
-        softConstraints: constraints?.softConstraints || []
-      }
-    });
+    if (!pythonResponse.ok) {
+      throw new Error(`Python Decision Engine failed: ${pythonResponse.statusText}`);
+    }
 
-    await timetable.save();
-
-    // Log optimization
-    const optimizationLog = new OptimizationLog({
-      timetable: timetable._id,
-      department,
-      algorithmUsed: "genetic",
-      performance: {
-        executionTime: generatedSchedule.metrics.executionTime,
-        fitnessScore: generatedSchedule.metrics.fitnessScore,
-        conflictsResolved: generatedSchedule.metrics.conflictsResolved
-      },
-      status: "success",
-      generatedBy: req.user.id
-    });
-
-    await optimizationLog.save();
+    const result = await pythonResponse.json();
+    
+    // 3. STORE THE DRAFT OPTIONS
+    const savedTimetables = [];
+    for (const option of result.timetables) {
+        const title = `${departmentData.name} - Sem ${semester} (${academicYear}) - Option ${option.option}`;
+        const timetable = new Timetable({
+          title,
+          department,
+          semester,
+          academicYear,
+          schedule: option.schedule,
+          status: 'draft',
+          generatedBy: req.user.id,
+          optimizationMetrics: {
+              fitnessScore: option.fitnessScore,
+              conflictsResolved: option.conflicts || 0
+          }
+        });
+        await timetable.save();
+        savedTimetables.push(timetable);
+    }
 
     res.status(201).json({
       success: true,
-      msg: "Timetable generated successfully",
-      data: timetable,
-      optimizationMetrics: generatedSchedule.metrics
+      msg: "Intelligent timetables generated successfully. Waiting for HDP/Admin review.",
+      timetables: savedTimetables,
+      suggestion: result.suggestion
     });
 
   } catch (error) {
-    console.error("Generate timetable error:", error);
-    res.status(500).json({ success: false, msg: "Server error during timetable generation" });
+    console.error("Timetable generation error:", error);
+    res.status(500).json({ success: false, msg: "Scheduling service currently unavailable. Using local fallback..." });
   }
 };
 
-// AI Timetable Optimization Function
-const generateOptimizedTimetable = async (data) => {
-  const { subjects, faculty, classrooms, department, constraints } = data;
-  
-  const days = department.workingDays || ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
-  const timeSlots = department.timeSlots || [
-    { slot: "9:00-10:00", order: 1 }, { slot: "10:00-11:00", order: 2 },
-    { slot: "11:00-12:00", order: 3 }, { slot: "14:00-15:00", order: 4 },
-    { slot: "15:00-16:00", order: 5 }
-  ];
-
-  let schedule = [];
-  let conflictsResolved = 0;
-  let facultyWorkload = {};
-  let classroomUsage = {};
-
-  // Initialize workload tracking
-  faculty.forEach(f => facultyWorkload[f._id] = 0);
-  classrooms.forEach(c => classroomUsage[c._id] = []);
-
-  for (let day of days) {
-    let daySchedule = { day, slots: [] };
-    
-    for (let subject of subjects) {
-      const subjectHours = subject.teachingHours || 3; // Default to 3 hours per week
-      
-      for (let hour = 0; hour < subjectHours; hour++) {
-        // Find available time slot
-        const availableSlot = findAvailableSlot(
-          day, timeSlots, facultyWorkload, classroomUsage, 
-          subject, faculty, classrooms
-        );
-
-        if (availableSlot) {
-          daySchedule.slots.push({
-            timeSlot: availableSlot.timeSlot,
-            slotOrder: availableSlot.order,
-            subject: subject._id,
-            faculty: availableSlot.facultyId,
-            classroom: availableSlot.classroomId,
-            type: "regular"
-          });
-
-          // Update tracking
-          facultyWorkload[availableSlot.facultyId]++;
-          classroomUsage[availableSlot.classroomId].push(`${day}-${availableSlot.timeSlot}`);
-          conflictsResolved++;
-        }
-      }
-    }
-    
-    schedule.push(daySchedule);
-  }
-
-  // Calculate metrics
-  const totalPossibleSlots = days.length * timeSlots.length;
-  const utilizedSlots = schedule.reduce((total, day) => total + day.slots.length, 0);
-  const utilizationRate = (utilizedSlots / totalPossibleSlots) * 100;
-
-  return {
-    schedule,
-    metrics: {
-      fitnessScore: calculateFitnessScore(schedule, facultyWorkload, classroomUsage),
-      conflictsResolved,
-      facultySatisfaction: 85, // Placeholder - would calculate based on preferences
-      roomUtilization: utilizationRate,
-      executionTime: 2500 // Placeholder - actual timing
-    }
-  };
-};
 export const exportData = async (req, res) => {
   try {
     const { exportType, format = 'json', filters = {} } = req.body;
@@ -2995,6 +2931,34 @@ export const getTimetableConflicts = async (req, res) => {
       success: false, 
       msg: "Server error while checking timetable conflicts" 
     });
+  }
+};
+
+export const getTimetables = async (req, res) => {
+  try {
+    const { department, status, semester, academicYear } = req.query;
+    const filter = {};
+
+    // Strict role-based filtering
+    if (req.user.role === 'hod') {
+      filter.department = req.user.department;
+    } else if (department) {
+      filter.department = department;
+    }
+
+    if (status) filter.status = status;
+    if (semester) filter.semester = semester;
+    if (academicYear) filter.academicYear = academicYear;
+
+    const timetables = await Timetable.find(filter)
+      .populate('department', 'name code')
+      .populate('generatedBy', 'name')
+      .sort({ createdAt: -1 });
+
+    res.json({ success: true, data: timetables });
+  } catch (error) {
+    console.error("Get timetables error:", error);
+    res.status(500).json({ success: false, msg: "Server error fetching timetables" });
   }
 };
 export const getTimetableVersions = async (req, res) => {

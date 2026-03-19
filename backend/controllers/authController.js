@@ -7,11 +7,19 @@ import bcrypt from "bcryptjs";
 
 // ===================== AUTH FUNCTIONS =====================
 export const register = async (req, res) => {
+  console.log("Registration attempt:", req.body);
   try {
     const { name, email, password, role, department, semester, designation, uniqueId } = req.body;
 
+    if (!email || !password || !name || !role) {
+      return res.status(400).json({ success: false, msg: "Please fill in all required fields" });
+    }
+
     const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ success: false, msg: "User already exists" });
+    if (existingUser) {
+      console.log("User already exists:", email);
+      return res.status(400).json({ success: false, msg: "User with this email already exists" });
+    }
 
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);

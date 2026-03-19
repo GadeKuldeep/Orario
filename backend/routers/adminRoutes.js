@@ -37,6 +37,7 @@ import {
   
   // Reports & Analytics
   getReports,
+  getTimetables,
   exportData,
   getOptimizationLogs,
   
@@ -49,6 +50,7 @@ import {
 import { 
   verifyToken, 
   isAdmin, 
+  isAdminOrHOD,
   isSameDepartment,
   rateLimitByUser 
 } from "../middleware/authMiddleware.js";
@@ -59,15 +61,14 @@ const router = express.Router();
  * 🔒 All admin routes are protected by JWT + Admin role check
  */
 router.use(verifyToken);
-router.use(isAdmin);
-router.use(rateLimitByUser); // Add rate limiting for admin actions
+router.use(rateLimitByUser);
 
 // 📊 Dashboard & Analytics
-router.get("/dashboard", getDashboardOverview);
-router.get("/analytics", getSystemAnalytics);
+router.get("/dashboard", isAdmin, getDashboardOverview);
+router.get("/analytics", isAdmin, getSystemAnalytics);
 
 // 👥 User Management
-router.post("/faculty/add", [
+router.post("/faculty/add", isAdmin, [
   body("name").notEmpty().trim().isLength({ min: 2 }),
   body("email").isEmail().normalizeEmail(),
   body("password").isLength({ min: 6 }),
@@ -75,7 +76,7 @@ router.post("/faculty/add", [
   body("designation").notEmpty()
 ], addFaculty);
 
-router.post("/student/add", [
+router.post("/student/add", isAdmin, [
   body("name").notEmpty().trim().isLength({ min: 2 }),
   body("email").isEmail().normalizeEmail(),
   body("password").isLength({ min: 6 }),
@@ -83,45 +84,45 @@ router.post("/student/add", [
   body("semester").isInt({ min: 1, max: 8 })
 ], addStudent);
 
-router.get("/users", getAllUsers);
-router.get("/users/:userId", [
+router.get("/users", isAdmin, getAllUsers);
+router.get("/users/:userId", isAdmin, [
   param("userId").isMongoId()
 ], getUserById);
 
-router.put("/users/:userId/status", [
+router.put("/users/:userId/status", isAdmin, [
   param("userId").isMongoId(),
   body("isActive").isBoolean()
 ], manageUserStatus);
 
-router.put("/users/:userId/profile", [
+router.put("/users/:userId/profile", isAdmin, [
   param("userId").isMongoId()
 ], updateUser);
 
 // 🏫 Resource Management
 
 // Classrooms
-router.post("/classrooms", [
+router.post("/classrooms", isAdmin, [
   body("name").notEmpty().trim(),
   body("roomNumber").notEmpty(),
   body("capacity").isInt({ min: 10 }),
   body("department").notEmpty()
 ], addClassroom);
 
-router.get("/classrooms", getClassrooms);
-router.get("/classrooms/:departmentId", [
+router.get("/classrooms", isAdminOrHOD, getClassrooms);
+router.get("/classrooms/:departmentId", isAdminOrHOD, [
   param("departmentId").notEmpty()
 ], getClassrooms);
 
-router.put("/classrooms/:classroomId", [
+router.put("/classrooms/:classroomId", isAdmin, [
   param("classroomId").isMongoId()
 ], updateClassroom);
 
-router.delete("/classrooms/:classroomId", [
+router.delete("/classrooms/:classroomId", isAdmin, [
   param("classroomId").isMongoId()
 ], deleteClassroom);
 
 // Subjects
-router.post("/subjects", [
+router.post("/subjects", isAdmin, [
   body("name").notEmpty().trim(),
   body("code").notEmpty().isUppercase(),
   body("credits").isInt({ min: 1, max: 5 }),
@@ -129,27 +130,27 @@ router.post("/subjects", [
   body("semester").isInt({ min: 1, max: 8 })
 ], addSubject);
 
-router.get("/subjects", getSubjects);
-router.get("/subjects/:departmentId", [
+router.get("/subjects", isAdminOrHOD, getSubjects);
+router.get("/subjects/:departmentId", isAdminOrHOD, [
   param("departmentId").notEmpty()
 ], getSubjects);
 
-router.put("/subjects/:subjectId", [
+router.put("/subjects/:subjectId", isAdmin, [
   param("subjectId").isMongoId()
 ], updateSubject);
 
-router.delete("/subjects/:subjectId", [
+router.delete("/subjects/:subjectId", isAdmin, [
   param("subjectId").isMongoId()
 ], deleteSubject);
 
 // Departments
-router.post("/departments", [
+router.post("/departments", isAdmin, [
   body("name").notEmpty().trim(),
   body("code").notEmpty().isUppercase()
 ], createDepartment);
 
-router.get("/departments", getDepartments);
-router.put("/departments/:departmentId", [
+router.get("/departments", isAdminOrHOD, getDepartments);
+router.put("/departments/:departmentId", isAdmin, [
   param("departmentId").isMongoId()
 ], updateDepartment);
 
@@ -165,21 +166,23 @@ router.get("/timetable/versions/:departmentId", [
   param("departmentId").notEmpty()
 ], getTimetableVersions);
 
+router.get("/timetables", isAdminOrHOD, getTimetables);
+
 router.get("/timetable/:timetableId", [
   param("timetableId").isMongoId()
 ], getTimetableById);
 
 router.put("/timetable/:timetableId/approve", [
   param("timetableId").isMongoId()
-], approveTimetable);
+], isAdminOrHOD, approveTimetable);
 
 router.put("/timetable/:timetableId/publish", [
   param("timetableId").isMongoId()
-], publishTimetable);
+], isAdminOrHOD, publishTimetable);
 
 router.delete("/timetable/:timetableId", [
   param("timetableId").isMongoId()
-], deleteTimetable);
+], isAdmin, deleteTimetable);
 
 router.put("/timetable/constraints", [
   body("department").notEmpty(),
@@ -187,27 +190,27 @@ router.put("/timetable/constraints", [
 ], manageTimetableConstraints);
 
 // 📈 Reports & Analytics
-router.get("/reports", getReports);
-router.get("/reports/:reportType", [
+router.get("/reports", isAdminOrHOD, getReports);
+router.get("/reports/:reportType", isAdminOrHOD, [
   param("reportType").isIn(['attendance', 'utilization', 'performance', 'all'])
 ], getReports);
 
-router.get("/reports/export/:format", [
+router.get("/reports/export/:format", isAdminOrHOD, [
   param("format").isIn(['pdf', 'excel', 'csv'])
 ], exportData);
 
-router.get("/optimization-logs", getOptimizationLogs);
-router.get("/optimization-logs/:departmentId", [
+router.get("/optimization-logs", isAdmin, getOptimizationLogs);
+router.get("/optimization-logs/:departmentId", isAdminOrHOD, [
   param("departmentId").notEmpty()
 ], getOptimizationLogs);
 
 // ⚙️ System Management
-router.get("/settings", getSystemSettings);
-router.put("/settings", [
+router.get("/settings", isAdmin, getSystemSettings);
+router.put("/settings", isAdmin, [
   body("settings").isObject()
 ], updateSystemSettings);
 
-router.post("/notifications/bulk", [
+router.post("/notifications/bulk", isAdminOrHOD, [
   body("title").notEmpty().trim(),
   body("message").notEmpty().trim(),
   body("recipientType").isIn(['all', 'faculty', 'students', 'department']),
@@ -215,21 +218,21 @@ router.post("/notifications/bulk", [
 ], sendBulkNotifications);
 
 // ✅ NEW: Department-specific admin routes
-router.get("/department/:departmentId/overview", [
+router.get("/department/:departmentId/overview", isAdminOrHOD, [
   param("departmentId").notEmpty()
 ], isSameDepartment, getDashboardOverview);
 
-router.get("/department/:departmentId/users", [
+router.get("/department/:departmentId/users", isAdminOrHOD, [
   param("departmentId").notEmpty()
 ], isSameDepartment, getAllUsers);
 
 // ✅ NEW: Backup and maintenance routes
-router.post("/system/backup", (req, res) => {
+router.post("/system/backup", isAdmin, (req, res) => {
   // Database backup functionality
   res.json({ success: true, message: "Backup initiated" });
 });
 
-router.get("/system/health", (req, res) => {
+router.get("/system/health", verifyToken, (req, res) => {
   res.json({ 
     success: true, 
     status: "healthy", 

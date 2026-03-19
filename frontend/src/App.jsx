@@ -11,6 +11,7 @@ import ForgotPassword from "./pages/ForgotPassword.jsx";
 import { Admin } from "./pages/Admin.jsx";
 import Student from "./pages/Student.jsx";
 import Faculty from "./pages/Faculty.jsx";
+import HOD from "./pages/HOD.jsx";
 
 // ✅ Global API Context (for consistent backend URL access)
 export const ApiContext = createContext();
@@ -49,6 +50,7 @@ const App = () => {
             <Route path="/admin/dashboard" element={<Admin />} />
             <Route path="/student/dashboard" element={<Student />} />
             <Route path="/faculty/dashboard" element={<Faculty />} />
+            <Route path="/hod/dashboard" element={<HOD />} />
           </Routes>
         </Router>
       </ThemeProvider>

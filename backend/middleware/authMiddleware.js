@@ -20,6 +20,20 @@ export const isAdmin = (req, res, next) => {
   next();
 };
 
+export const isHOD = (req, res, next) => {
+  if (!req.user || req.user.role !== "hod") {
+    return res.status(403).json({ msg: "HOD access only" });
+  }
+  next();
+};
+
+export const isAdminOrHOD = (req, res, next) => {
+  if (!req.user || (req.user.role !== "admin" && req.user.role !== "hod")) {
+    return res.status(403).json({ msg: "Admin or HOD access only" });
+  }
+  next();
+};
+
 export const optionalAuth = (req, res, next) => {
   const token = req.headers["authorization"]?.split(" ")[1];
   if (token) {

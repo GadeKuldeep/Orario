@@ -16,6 +16,7 @@ import facultyRoute from './routers/facultyRoutes.js';
 import notificationRoute from './routers/notificationRoutes.js';
 import studentRoute from './routers/studentRoutes.js';
 import timetableRoute from './routers/timetableRoutes.js';
+import teacherRoute from './routers/teacherRoutes.js';
 
 dotenv.config();
 
@@ -35,10 +36,11 @@ app.use("/api/faculty", facultyRoute);
 app.use("/api/notification", notificationRoute);
 app.use("/api/student", studentRoute);
 app.use("/api/timetable", timetableRoute);
+app.use("/api/teacher", teacherRoute);
 
 app.use(express.static(path.join(__dirname, "build")));
 
-app.get("*", (req, res) => {
+app.get(/.*/, (req, res) => {
   res.sendFile(path.join(__dirname, "build", "index.html"));
 });
 
