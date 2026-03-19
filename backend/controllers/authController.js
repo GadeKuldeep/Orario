@@ -32,7 +32,7 @@ export const register = async (req, res) => {
       department,
       isActive: true, // ← ADD THIS LINE
       ...(role === "student" && { semester, uniqueId }),
-      ...(role === "faculty" && { designation, uniqueId })
+      ...((role === "faculty" || role === "hod") && { designation, uniqueId })
     });
 
     await user.save();
@@ -92,8 +92,11 @@ export const login = async (req, res) => {
       case 'admin':
         redirectUrl = '/admin/dashboard';
         break;
+      case 'hod':
+        redirectUrl = '/hod/dashboard';
+        break;
       default:
-        redirectUrl = '/dashboard';
+        redirectUrl = '/';
     }
 
     res.json({

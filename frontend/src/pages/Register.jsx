@@ -146,6 +146,7 @@ const Register = () => {
               >
                 <option value="student">Student</option>
                 <option value="faculty">Faculty</option>
+                <option value="hod">HOD</option>
               </select>
             </div>
           </div>
@@ -166,7 +167,7 @@ const Register = () => {
 
             <div className="form-group">
               <label htmlFor="uniqueId">
-                {formData.role === 'student' ? 'Student ID' : 'Faculty ID'}
+                {formData.role === 'student' ? 'Student ID' : formData.role === 'faculty' ? 'Faculty ID' : 'HOD ID'}
               </label>
               <input
                 type="text"
@@ -175,7 +176,7 @@ const Register = () => {
                 value={formData.uniqueId}
                 onChange={handleChange}
                 required
-                placeholder={formData.role === 'student' ? 'Enter student ID' : 'Enter faculty ID'}
+                placeholder={formData.role === 'student' ? 'Enter student ID' : formData.role === 'faculty' ? 'Enter faculty ID' : 'Enter HOD ID'}
               />
             </div>
           </div>
@@ -198,7 +199,7 @@ const Register = () => {
             </div>
           )}
 
-          {formData.role === 'faculty' && (
+          {(formData.role === 'faculty' || formData.role === 'hod') && (
             <div className="form-group">
               <label htmlFor="designation">Designation</label>
               <input
@@ -208,7 +209,7 @@ const Register = () => {
                 value={formData.designation}
                 onChange={handleChange}
                 required
-                placeholder="Enter designation (e.g., Professor)"
+                placeholder="Enter designation (e.g., Professor / Head)"
               />
             </div>
           )}

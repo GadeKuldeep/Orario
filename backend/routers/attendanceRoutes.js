@@ -13,7 +13,8 @@ import {
 } from "../controllers/attendanceController.js";
 
 import { 
-  verifyToken, 
+  verifyToken,
+  verifyTokenCookie,
   isAdmin, 
   isFaculty, 
   isAdminOrFaculty,
@@ -23,7 +24,7 @@ import {
 const router = express.Router();
 
 // Apply JWT protection to all routes
-router.use(verifyToken);
+router.use(verifyTokenCookie);
 
 // === LEAVE ROUTES ===
 

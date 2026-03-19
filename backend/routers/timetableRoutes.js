@@ -14,7 +14,8 @@ import {
 } from "../controllers/timetableController.js";
 
 import { 
-  verifyToken, 
+  verifyToken,
+  verifyTokenCookie,
   isAdmin, 
   isFaculty,
   isAdminOrFaculty,
@@ -25,7 +26,7 @@ import {
 const router = express.Router();
 
 // Apply JWT protection and rate limiting to all routes
-router.use(verifyToken);
+router.use(verifyTokenCookie);
 router.use(rateLimitByUser);
 
 // === TIMETABLE GENERATION & MANAGEMENT (Admin only) ===

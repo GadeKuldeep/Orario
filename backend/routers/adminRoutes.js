@@ -49,6 +49,7 @@ import {
 
 import { 
   verifyToken, 
+  verifyTokenCookie,
   isAdmin, 
   isAdminOrHOD,
   isSameDepartment,
@@ -59,8 +60,9 @@ const router = express.Router();
 
 /**
  * 🔒 All admin routes are protected by JWT + Admin role check
+ * verifyTokenCookie reads the token from browser cookies OR Authorization header
  */
-router.use(verifyToken);
+router.use(verifyTokenCookie);
 router.use(rateLimitByUser);
 
 // 📊 Dashboard & Analytics
@@ -155,20 +157,20 @@ router.put("/departments/:departmentId", isAdmin, [
 ], updateDepartment);
 
 // 📅 Timetable Management
-router.post("/timetable/generate", [
+router.post("/timetable/generate", isAdminOrHOD, [
   body("department").notEmpty(),
   body("semester").isInt({ min: 1, max: 8 }),
   body("academicYear").notEmpty()
 ], generateTimetable);
 
-router.get("/timetable/versions", getTimetableVersions);
-router.get("/timetable/versions/:departmentId", [
+router.get("/timetable/versions", isAdminOrHOD, getTimetableVersions);
+router.get("/timetable/versions/:departmentId", isAdminOrHOD, [
   param("departmentId").notEmpty()
 ], getTimetableVersions);
 
 router.get("/timetables", isAdminOrHOD, getTimetables);
 
-router.get("/timetable/:timetableId", [
+router.get("/timetable/:timetableId", isAdminOrHOD, [
   param("timetableId").isMongoId()
 ], getTimetableById);
 
@@ -184,7 +186,7 @@ router.delete("/timetable/:timetableId", [
   param("timetableId").isMongoId()
 ], isAdmin, deleteTimetable);
 
-router.put("/timetable/constraints", [
+router.put("/timetable/constraints", isAdminOrHOD, [
   body("department").notEmpty(),
   body("constraints").isObject()
 ], manageTimetableConstraints);

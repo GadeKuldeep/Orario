@@ -28,7 +28,8 @@ import {
 } from "../controllers/facultyController.js";
 
 import { 
-  verifyToken, 
+  verifyToken,
+  verifyTokenCookie,
   isAdmin, 
   isFaculty,
   isAdminOrFaculty,
@@ -40,7 +41,7 @@ import {
 const router = express.Router();
 
 // Apply JWT verification and rate limiting to all routes
-router.use(verifyToken);
+router.use(verifyTokenCookie);
 router.use(rateLimitByUser);
 
 /**

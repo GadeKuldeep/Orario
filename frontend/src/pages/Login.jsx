@@ -1,19 +1,15 @@
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import "./Login.css"
 
 const Login = () => {
-  const [formData, setFormData] = useState({
-    email: '',
-    password: ''
-  });
+  const [formData, setFormData] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
+    setFormData({ ...formData, [e.target.name]: e.target.value });
     setError('');
   };
 
@@ -25,17 +21,14 @@ const Login = () => {
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData),
-        credentials: 'include' // Important for cookies
+        credentials: 'include'
       });
 
       const data = await response.json();
 
       if (data.success) {
-        // Store only non-sensitive user data in localStorage
         localStorage.setItem('user', JSON.stringify({
           id: data.data.id,
           name: data.data.name,
@@ -43,101 +36,60 @@ const Login = () => {
           role: data.data.role,
           department: data.data.department
         }));
-
-        // Backend will handle the redirect via HTTP redirect
-        // The browser will automatically follow the redirect
-        window.location.href = data.data.redirectUrl;
         
+        // Use navigate instead of window.location for smoother transition if possible
+        // but the backend provides a redirectUrl
+        window.location.href = data.data.redirectUrl;
       } else {
-        setError(data.msg || 'Login failed');
+        setError(data.msg || 'Invalid credentials');
       }
     } catch (err) {
-      setError('Network error. Please try again.',err);
+      setError('Connection refused. Is the server running?');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleForgotPassword = () => {
-    window.location.href = '/auth/forgot-password';
-  };
-
-  const handleRegister = () => {
-    window.location.href = '/auth/register';
-  };
-
   return (
     <div className="login-container">
-      <div className="login-card">
+      <div className="login-card glass">
         <div className="login-header">
-          <h2>Welcome Back</h2>
-          <p>Sign in to your account</p>
+          <h2 className="gradient-text">Welcome Back</h2>
+          <p>Sign in to your ORARIO workstation</p>
         </div>
 
-        {error && (
-          <div className="error-message">
-            {error}
-          </div>
-        )}
+        {error && <div className="error-banner">{error}</div>}
 
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
-            <label htmlFor="email">Email Address</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              required
-              placeholder="Enter your email"
-            />
+            <label>Email Address</label>
+            <input type="email" name="email" value={formData.email} onChange={handleChange} required placeholder="admin@orario.com" />
           </div>
 
           <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              required
-              placeholder="Enter your password"
-            />
+            <label>Secure Password</label>
+            <input type="password" name="password" value={formData.password} onChange={handleChange} required placeholder="••••••••" />
           </div>
 
-          <button 
-            type="submit" 
-            className="login-btn"
-            disabled={loading}
-          >
-            {loading ? 'Signing In...' : 'Sign In'}
+          <button type="submit" className="login-btn highlight" disabled={loading}>
+            {loading ? 'Authenticating...' : 'Sign In to Dashboard'}
           </button>
         </form>
 
         <div className="login-links">
-          <button 
-            type="button" 
-            className="link-btn"
-            onClick={handleForgotPassword}
-          >
-            Forgot Password?
-          </button>
-          <button 
-            type="button" 
-            className="link-btn"
-            onClick={handleRegister}
-          >
-            Don't have an account? Register
-          </button>
+           <button type="button" className="link-btn" onClick={() => navigate('/auth/register')}>
+             Create new account
+           </button>
         </div>
 
-        <div className="role-info">
-          <p><strong>Demo Roles:</strong></p>
-          <p>• Student: Access to student dashboard</p>
-          <p>• Faculty: Access to faculty dashboard</p>
-          <p>• Admin: Access to admin dashboard</p>
+        <div className="demo-creds">
+           <p style={{fontWeight: 800, fontSize: '0.8rem', color: '#3498db', textTransform: 'uppercase', marginBottom: '0.5rem'}}>Master Demo Accounts</p>
+           <div className="creds-list">
+              <div className="cred-item"><span>Admin</span> <code>admin@orario.com</code> / <code>admin123</code></div>
+              <div className="cred-item"><span>HOD</span> <code>hod@orario.com</code> / <code>password123</code></div>
+              <div className="cred-item"><span>Faculty</span> <code>faculty@orario.com</code> / <code>password123</code></div>
+              <div className="cred-item"><span>Student</span> <code>student@orario.com</code> / <code>password123</code></div>
+           </div>
         </div>
       </div>
     </div>

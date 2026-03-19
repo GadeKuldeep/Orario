@@ -13,7 +13,8 @@ import {
 } from "../controllers/studentDashboardController.js";
 
 import { 
-  verifyToken, 
+  verifyToken,
+  verifyTokenCookie,
   isStudent,
   isAdminOrSelf,
   optionalAuth,
@@ -23,7 +24,7 @@ import {
 const router = express.Router();
 
 // Apply JWT protection and rate limiting to all routes
-router.use(verifyToken);
+router.use(verifyTokenCookie);
 router.use(rateLimitByUser);
 
 // === STUDENT-ONLY ROUTES ===

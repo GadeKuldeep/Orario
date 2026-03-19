@@ -52,7 +52,7 @@ export const Admin = () => {
     setLoading(true);
     setError('');
     try {
-      const response = await fetch('/api/admin/dashboard-overview', {
+      const response = await fetch('/api/admin/dashboard', {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
@@ -518,80 +518,80 @@ export const Admin = () => {
 
   return (
     <div className="admin-container">
-      <div className="admin-header">
-        <h1>Admin Dashboard</h1>
+      {/* 🚀 Glassmorphism Header */}
+      <header className="admin-header">
+        <div className="logo-section">
+          <h1>ORARIO <span style={{fontSize: '0.8rem', opacity: 0.7, color: '#333'}}>ADMIN</span></h1>
+        </div>
         <div className="user-info">
-          <span>Welcome, Admin</span>
+          <div style={{textAlign: 'right'}}>
+            <p style={{margin: 0, fontWeight: 700, fontSize: '0.9rem'}}>Super Admin</p>
+            <p style={{margin: 0, fontSize: '0.75rem', color: '#64748b'}}>Central Controller</p>
+          </div>
           <div className="user-avatar">A</div>
+          <button 
+            onClick={() => { localStorage.removeItem('user'); window.location.href='/'; }}
+            style={{ marginLeft: '1rem', padding: '0.5rem 1rem', background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer'}}
+          >
+            Logout
+          </button>
         </div>
-      </div>
-
-      {error && (
-        <div className="error-banner">
-          {error}
-          <button className="close-error" onClick={() => setError('')}>×</button>
-        </div>
-      )}
+      </header>
 
       <div className="admin-content">
-        <div className="sidebar">
-          <nav className="sidebar-nav">
-            <button 
-              className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-              onClick={() => handleTabChange('dashboard')}
-            >
-              📊 Dashboard
-            </button>
-            <button 
-              className={`nav-item ${activeTab === 'users' ? 'active' : ''}`}
-              onClick={() => handleTabChange('users')}
-            >
-              👥 Users
-            </button>
-            <button 
-              className={`nav-item ${activeTab === 'departments' ? 'active' : ''}`}
-              onClick={() => handleTabChange('departments')}
-            >
-              🏛️ Departments
-            </button>
-            <button 
-              className={`nav-item ${activeTab === 'classrooms' ? 'active' : ''}`}
-              onClick={() => handleTabChange('classrooms')}
-            >
-              🏫 Classrooms
-            </button>
-            <button 
-              className={`nav-item ${activeTab === 'timetables' ? 'active' : ''}`}
-              onClick={() => handleTabChange('timetables')}
-            >
-              📅 Timetables
-            </button>
-            <button 
-              className={`nav-item ${activeTab === 'subjects' ? 'active' : ''}`}
-              onClick={() => handleTabChange('subjects')}
-            >
-              📚 Subjects
-            </button>
-            <button 
-              className={`nav-item ${activeTab === 'reports' ? 'active' : ''}`}
-              onClick={() => handleTabChange('reports')}
-            >
-              📊 Reports
-            </button>
-            <button 
-              className={`nav-item ${activeTab === 'settings' ? 'active' : ''}`}
-              onClick={() => handleTabChange('settings')}
-            >
-              ⚙️ Settings
-            </button>
-          </nav>
-        </div>
+        {/* 📋 Translucent Sidebar */}
+        <aside className="sidebar">
+          <button 
+            className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+            onClick={() => handleTabChange('dashboard')}
+          >
+            📊 Dashboard Overview
+          </button>
+          <button 
+            className={`nav-item ${activeTab === 'users' ? 'active' : ''}`}
+            onClick={() => handleTabChange('users')}
+          >
+            👥 User Directory
+          </button>
+          <button 
+            className={`nav-item ${activeTab === 'departments' ? 'active' : ''}`}
+            onClick={() => handleTabChange('departments')}
+          >
+            🏛️ Departments
+          </button>
+          <button 
+            className={`nav-item ${activeTab === 'classrooms' ? 'active' : ''}`}
+            onClick={() => handleTabChange('classrooms')}
+          >
+            🏫 Resource Centers
+          </button>
+          <button 
+            className={`nav-item ${activeTab === 'timetables' ? 'active' : ''}`}
+            onClick={() => handleTabChange('timetables')}
+          >
+            📅 Master Timetables
+          </button>
+          <button 
+            className={`nav-item ${activeTab === 'reports' ? 'active' : ''}`}
+            onClick={() => handleTabChange('reports')}
+          >
+            📈 Analytics Hub
+          </button>
+        </aside>
 
-        <div className="main-content">
+        {/* 🎨 Main Content Area */}
+        <main className="main-content">
+          {error && (
+            <div className="error-banner">
+              <span>⚠️ {error}</span>
+              <button className="close-error" onClick={() => setError('')}>×</button>
+            </div>
+          )}
+
           {loading ? (
             <div className="loading-spinner">
               <div className="spinner"></div>
-              <p>Loading...</p>
+              <p>Synchronizing Data...</p>
             </div>
           ) : (
             <>
@@ -600,12 +600,10 @@ export const Admin = () => {
               {activeTab === 'departments' && renderDepartments()}
               {activeTab === 'classrooms' && renderClassrooms()}
               {activeTab === 'timetables' && renderTimetables()}
-              {activeTab === 'subjects' && <div className="tab-content"><h2>Subjects Management - Coming Soon</h2></div>}
-              {activeTab === 'reports' && <div className="tab-content"><h2>Reports - Coming Soon</h2></div>}
-              {activeTab === 'settings' && <div className="tab-content"><h2>System Settings - Coming Soon</h2></div>}
+              {activeTab === 'reports' && <div className="tab-content"><h2>Reports Hub - Coming Soon</h2></div>}
             </>
           )}
-        </div>
+        </main>
       </div>
     </div>
   );

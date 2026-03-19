@@ -11,7 +11,8 @@ import {
 } from "../controllers/NotificationController.js";
 
 import { 
-  verifyToken, 
+  verifyToken,
+  verifyTokenCookie,
   isAdmin, 
   isFaculty,
   isAdminOrFaculty,
@@ -22,7 +23,7 @@ import {
 const router = express.Router();
 
 // Apply JWT protection and rate limiting to all routes
-router.use(verifyToken);
+router.use(verifyTokenCookie);
 router.use(rateLimitByUser);
 
 // === USER NOTIFICATION MANAGEMENT ===

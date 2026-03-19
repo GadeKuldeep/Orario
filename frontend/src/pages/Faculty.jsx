@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import "./Admin.css";
 
 const Faculty = () => {
   const navigate = useNavigate();
   const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')));
+  const [activeTab, setActiveTab] = useState('availability');
   const [availability, setAvailability] = useState([]);
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
@@ -45,12 +47,12 @@ const Faculty = () => {
     setAvailability([...filtered, { day, slot, status: newStatus }]);
   };
 
-  const getSlotColor = (day, slot) => {
+  const getSlotColorClass = (day, slot) => {
     const item = availability.find(a => a.day === day && a.slot === slot);
-    if (!item) return '#f8f9fa';
-    if (item.status === 'preferred') return '#d4edda'; // Greenish
-    if (item.status === 'unavailable') return '#f8d7da'; // Reddish
-    return '#e2e3e5'; // Grayish available
+    if (!item) return '';
+    if (item.status === 'preferred') return 'preferred';
+    if (item.status === 'unavailable') return 'unavailable';
+    return '';
   };
 
   const handleSave = async () => {
@@ -64,87 +66,99 @@ const Faculty = () => {
       });
       const result = await response.json();
       if (result.success) {
-        setMessage('Availability updated successfully!');
-        setTimeout(() => setMessage(''), 3000);
+        setMessage('Your schedule preferences have been synchronized.');
+        setTimeout(() => setMessage(''), 4000);
       }
     } catch (err) {
-      setMessage('Failed to save availability.');
+      setMessage('Synchronization failed. Please check connection.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '1200px', margin: '0 auto', fontFamily: 'Inter, sans-serif' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem' }}>
-        <div>
-           <h1 style={{ margin: 0, color: '#2c3e50' }}>Faculty Dashboard - ORARIO</h1>
-           <p style={{ color: '#7f8c8d' }}>Welcome back, Prof. {user?.name}</p>
+    <div className="admin-container">
+      <header className="admin-header">
+        <h1>ORARIO <span style={{fontSize: '0.8rem', color: '#666'}}>FACULTY HUB</span></h1>
+        <div className="user-info">
+          <div style={{textAlign: 'right'}}>
+            <p style={{margin: 0, fontWeight: 700}}>Prof. {user?.name}</p>
+            <p style={{margin: 0, fontSize: '0.75rem', color: '#64748b'}}>{user?.designation || 'Faculty Member'}</p>
+          </div>
+          <div className="user-avatar" style={{background: 'var(--accent-gradient)'}}>P</div>
+          <button 
+             onClick={() => { localStorage.removeItem('user'); navigate('/'); }}
+             className="btn-sm btn-delete" style={{marginLeft: '1rem'}}>Logout</button>
         </div>
-        <button 
-          onClick={() => { localStorage.removeItem('user'); navigate('/'); }}
-          style={{ padding: '0.6rem 1.2rem', background: '#e74c3c', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
-        >
-          Logout
-        </button>
       </header>
 
-      <main>
-        <section style={{ background: 'white', padding: '2rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', marginBottom: '2rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-            <div>
-                <h2 style={{ margin: 0 }}>Mark Your Weekly Availability</h2>
-                <p style={{ color: '#7f8c8d', fontSize: '0.9rem' }}>Click on slots to cycle: ⚪ Available → 🟢 Preferred → 🔴 Unavailable</p>
-            </div>
-            <button 
-              onClick={handleSave} 
-              disabled={loading}
-              style={{ padding: '0.8rem 1.5rem', background: '#2980b9', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
-            >
-              {loading ? 'Saving...' : 'Save Preferences'}
-            </button>
+      <div className="admin-content">
+        <aside className="sidebar">
+          <button className={`nav-item ${activeTab === 'availability' ? 'active' : ''}`} onClick={() => setActiveTab('availability')}>
+            📆 Weekly Availability
+          </button>
+          <button className={`nav-item ${activeTab === 'schedule' ? 'active' : ''}`} onClick={() => setActiveTab('schedule')}>
+            🏫 Active Schedule
+          </button>
+          <button className={`nav-item ${activeTab === 'profile' ? 'active' : ''}`} onClick={() => setActiveTab('profile')}>
+            👤 Academic Profile
+          </button>
+        </aside>
+
+        <main className="main-content">
+          <div className="content-header">
+             <h2>{activeTab === 'availability' ? 'Manage Your Availability' : 'Active Class Schedule'}</h2>
+             {activeTab === 'availability' && (
+                <button onClick={handleSave} disabled={loading} className="btn-primary">
+                  {loading ? 'Syncing...' : 'Save Preferences'}
+                </button>
+             )}
           </div>
 
-          {message && <div style={{ padding: '1rem', background: '#d1ecf1', color: '#0c5460', borderRadius: '6px', marginBottom: '1rem' }}>{message}</div>}
+          {message && <div style={{ padding: '1rem', background: '#dcfce7', color: '#15803d', borderRadius: '12px', marginBottom: '1.5rem', fontWeight: 600 }}>{message}</div>}
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'center' }}>
-              <thead>
-                <tr>
-                  <th style={{ padding: '1rem', border: '1px solid #dee2e6' }}>Time / Day</th>
-                  {days.map(d => <th key={d} style={{ padding: '1rem', border: '1px solid #dee2e6' }}>{d}</th>)}
-                </tr>
-              </thead>
-              <tbody>
-                {slots.map(s => (
-                  <tr key={s}>
-                    <td style={{ padding: '1rem', border: '1px solid #dee2e6', fontWeight: 'bold', background: '#f8f9fa' }}>{s}</td>
-                    {days.map(d => (
-                      <td 
-                        key={d+s} 
-                        onClick={() => toggleSlot(d, s)}
-                        style={{ 
-                          padding: '1rem', 
-                          border: '1px solid #dee2e6', 
-                          cursor: 'pointer', 
-                          background: getSlotColor(d, s),
-                          transition: 'all 0.2s'
-                        }}
-                      >
-                        {availability.find(a => a.day === d && a.slot === s)?.status === 'preferred' ? '⭐' : 
-                         availability.find(a => a.day === d && a.slot === s)?.status === 'unavailable' ? '🚫' : ''}
-                      </td>
-                    ))}
+          {activeTab === 'availability' && (
+            <div className="table-container">
+              <p style={{color: '#64748b', marginBottom: '1.5rem'}}>Click slots to cycle: ⚪ Standard → 🟢 Preferred (⭐) → 🔴 Unavailable (🚫)</p>
+              <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: '8px' }}>
+                <thead>
+                  <tr>
+                    <th style={{padding: '1rem', textAlign: 'left', color: '#64748b'}}>Time Slot</th>
+                    {days.map(d => <th key={d}>{d}</th>)}
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </section>
-      </main>
+                </thead>
+                <tbody>
+                  {slots.map(s => (
+                    <tr key={s}>
+                      <td style={{ fontWeight: 800, color: '#1e293b' }}>{s}</td>
+                      {days.map(d => (
+                        <td 
+                          key={d+s} 
+                          onClick={() => toggleSlot(d, s)}
+                          className={`availability-cell ${getSlotColorClass(d, s)}`}
+                        >
+                          {availability.find(a => a.day === d && a.slot === s)?.status === 'preferred' ? '⭐' : 
+                           availability.find(a => a.day === d && a.slot === s)?.status === 'unavailable' ? '🚫' : ''}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
+          {activeTab === 'schedule' && (
+             <div style={{textAlign: 'center', padding: '5rem'}}>
+                <span style={{fontSize: '3rem'}}>⏳</span>
+                <h3>Timetable Release Pending</h3>
+                <p style={{color: '#64748b'}}>Once the HOD approves the department draft, your personal schedule will appear here.</p>
+             </div>
+          )}
+        </main>
+      </div>
     </div>
   );
 };
 
 export default Faculty;
-

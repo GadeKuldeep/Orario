@@ -1,35 +1,31 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import "./Admin.css"; // Reuse Admin styles for consistency
+import "./Admin.css";
 
 const HOD = () => {
-  const [activeTab, setActiveTab] = useState('review');
-  const [draftTimetables, setDraftTimetables] = useState([]);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [user, setUser] = useState(JSON.parse(localStorage.getItem('user')));
+  const [timetables, setTimetables] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const user = JSON.parse(localStorage.getItem('user'));
 
   useEffect(() => {
     if (!user || user.role !== 'hod') {
       navigate('/auth/login');
     } else {
-        fetchDrafts();
+      fetchTimetables();
     }
   }, []);
 
-  const fetchDrafts = async () => {
+  const fetchTimetables = async () => {
     setLoading(true);
     try {
-      const response = await fetch(`/api/admin/timetables?status=draft&department=${user.department}`, {
-        credentials: 'include'
-      });
-      const data = await response.json();
-      if (data.success) {
-        setDraftTimetables(data.data || []);
-      }
+      const response = await fetch('/api/admin/timetables?status=draft', { credentials: 'include' });
+      const result = await response.json();
+      if (result.success) setTimetables(result.data || []);
     } catch (err) {
-      setError('Failed to fetch draft timetables');
+      setError("Failed to sync schedules.");
     } finally {
       setLoading(false);
     }
@@ -41,77 +37,93 @@ const HOD = () => {
         method: 'PUT',
         credentials: 'include'
       });
-      const data = await response.json();
-      if (data.success) {
-        alert('Timetable approved successfully!');
-        fetchDrafts();
+      const result = await response.json();
+      if (result.success) {
+        alert("Timetable approved successfully!");
+        fetchTimetables();
       }
     } catch (err) {
-      alert('Error during approval');
+      alert("Approval failed.");
     }
   };
 
   return (
     <div className="admin-container">
-      <div className="admin-header" style={{ background: 'linear-gradient(135deg, #2c3e50 0%, #34495e 100%)' }}>
-        <h1>HOD Portal - ORARIO</h1>
+      <header className="admin-header">
+        <h1>ORARIO <span style={{fontSize: '0.8rem', color: '#666'}}>DEPT. HEAD</span></h1>
         <div className="user-info">
-          <span>Welcome, Head of Dept. {user?.name}</span>
-          <div className="user-avatar" style={{ background: '#e67e22' }}>H</div>
+          <div style={{textAlign: 'right'}}>
+            <p style={{margin: 0, fontWeight: 700}}>{user?.name}</p>
+            <p style={{margin: 0, fontSize: '0.75rem', color: '#64748b'}}>Department Head</p>
+          </div>
+          <div className="user-avatar" style={{background: 'var(--success-gradient)'}}>H</div>
+          <button 
+            onClick={() => { localStorage.removeItem('user'); navigate('/'); }}
+            style={{ marginLeft: '1rem', padding: '0.5rem 1rem', background: '#fee2e2', color: '#b91c1c', border: 'none', borderRadius: '8px', fontWeight: 700, cursor: 'pointer' }}
+          >Logout</button>
         </div>
-      </div>
+      </header>
 
       <div className="admin-content">
-        <div className="sidebar" style={{ width: '200px' }}>
-          <nav className="sidebar-nav">
-            <button className={`nav-item ${activeTab === 'review' ? 'active' : ''}`} onClick={() => setActiveTab('review')}>
-              📋 Review Drafts
-            </button>
-            <button className={`nav-item ${activeTab === 'faculty' ? 'active' : ''}`} onClick={() => setActiveTab('faculty')}>
-              👨‍🏫 Dept. Faculty
-            </button>
-          </nav>
-        </div>
+        <aside className="sidebar">
+          <button className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')}>
+            📊 Dept. Overview
+          </button>
+          <button className={`nav-item ${activeTab === 'drafts' ? 'active' : ''}`} onClick={() => setActiveTab('drafts')}>
+            ⏳ Pending Reviews
+          </button>
+          <button className={`nav-item ${activeTab === 'faculty' ? 'active' : ''}`} onClick={() => setActiveTab('faculty')}>
+            👥 Faculty Workload
+          </button>
+        </aside>
 
-        <div className="main-content">
-            <div className="tab-content">
-                <h2>Pending Timetable Reviews</h2>
-                <p>Review the AI-generated drafts below and approve the most suitable one for this semester.</p>
-                
-                {loading ? <p>Loading draft options...</p> : (
-                    <div className="table-container">
-                        <table className="data-table">
-                            <thead>
-                                <tr>
-                                    <th>Option Name</th>
-                                    <th>Fitness Score</th>
-                                    <th>Generated On</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {draftTimetables.map(dt => (
-                                    <tr key={dt._id}>
-                                        <td>{dt.title}</td>
-                                        <td>
-                                            <span style={{ color: dt.optimizationMetrics?.fitnessScore > 85 ? 'green' : 'orange' }}>
-                                                {dt.optimizationMetrics?.fitnessScore || 0}%
-                                            </span>
-                                        </td>
-                                        <td>{new Date(dt.createdAt).toLocaleDateString()}</td>
-                                        <td>
-                                            <button className="btn-sm btn-view" style={{ background: '#3498db' }}>View Details</button>
-                                            <button className="btn-sm btn-edit" style={{ background: '#27ae60' }} onClick={() => handleApprove(dt._id)}>Approve & Publish</button>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                        {draftTimetables.length === 0 && <p className="no-data">No draft timetables pending review for your department.</p>}
-                    </div>
-                )}
+        <main className="main-content">
+          <div className="content-header">
+             <h2>{activeTab === 'dashboard' ? 'Departmental Insights' : activeTab === 'drafts' ? 'AI Timetable Drafts' : 'Faculty Management'}</h2>
+          </div>
+
+          {activeTab === 'drafts' && (
+            <div className="table-container">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Version</th>
+                    <th>Semester</th>
+                    <th>Fitness Score</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {timetables.map(t => (
+                    <tr key={t._id}>
+                      <td>v{t.version}</td>
+                      <td>Semester {t.semester}</td>
+                      <td><span className="status-badge active">{(t.optimizationMetrics?.fitnessScore * 100).toFixed(1)}%</span></td>
+                      <td>
+                        <button className="btn-sm btn-view" onClick={() => alert("Detailed view pending")}>Analyze</button>
+                        <button className="btn-sm btn-primary" onClick={() => handleApprove(t._id)}>Approve</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {timetables.length === 0 && <p style={{textAlign: 'center', padding: '2rem'}}>No pending drafts for review.</p>}
             </div>
-        </div>
+          )}
+
+          {activeTab === 'dashboard' && (
+             <div className="stats-grid">
+               <div className="stat-card">
+                  <div className="stat-icon faculty">👨‍🏫</div>
+                  <div className="stat-info"><h3>12</h3><p>Active Faculty</p></div>
+               </div>
+               <div className="stat-card">
+                  <div className="stat-icon classroom">🏫</div>
+                  <div className="stat-info"><h3>04</h3><p>Dedicated Labs</p></div>
+               </div>
+             </div>
+          )}
+        </main>
       </div>
     </div>
   );
